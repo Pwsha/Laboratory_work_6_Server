@@ -3,6 +3,7 @@ package org.example.client;
 import org.example.common.command.CommandRequest;
 import org.example.common.command.CommandResponse;
 import org.example.common.command.CommandType;
+import static org.example.common.command.CommandType.*;
 import org.example.common.init.StudyGroup;
 
 import java.util.*;
@@ -13,12 +14,75 @@ public class ConsoleReader {
     private final LinkedList<String> commandHistory;
     private final ExecuteScript executeScriptCommand;
     private final HashSet<StudyGroup> emptyCollection = new HashSet<>();
+    private final Map<CommandType, CommandHandler> handlers;
+
+    @FunctionalInterface
+    private interface CommandHandler {
+        void handle(CommandRequest.Builder builder, String cmdArgs) throws Exception;
+    }
 
     public ConsoleReader(Client client) {
         this.client = client;
         this.scanner = new Scanner(System.in);
         this.commandHistory = new LinkedList<>();
         this.executeScriptCommand = new ExecuteScript(client, scanner, this);
+        this.handlers = new HashMap<>();
+        initHandlers();
+    }
+
+    private void initHandlers() {
+        CommandType[] noArgs = {HELP, INFO, SHOW, CLEAR, MIN_BY_SEMESTER_ENUM};
+        for (CommandType type : noArgs) {
+            handlers.put(type, (builder, args) -> {});
+        }
+
+        CommandHandler studyGroupHandler = (builder, args) ->
+                builder.studyGroup(StudyGroupReader.read(emptyCollection, scanner));
+
+        handlers.put(ADD, studyGroupHandler);
+        handlers.put(ADD_IF_MAX, studyGroupHandler);
+        handlers.put(REMOVE_GREATER, studyGroupHandler);
+
+        handlers.put(UPDATE, (builder, args) -> {
+            if (args.contains("{") && args.contains("}")) {
+                String[] updateArgs = args.split("\\s+", 2);
+                if (updateArgs.length < 2) {
+                    throw new IllegalArgumentException("Формат: update id {element}");
+                }
+                builder.id(Long.parseLong(updateArgs[0]));
+                StudyGroupReader.setScriptMode(updateArgs[1]);
+                builder.studyGroup(StudyGroupReader.read(emptyCollection, scanner));
+            } else {
+                if (args.isEmpty()) {
+                    throw new IllegalArgumentException("Формат: update id");
+                }
+                builder.id(Long.parseLong(args));
+                StudyGroupReader.setConsoleMode();
+                System.out.println("Введите новые данные для элемента с id " + Long.parseLong(args) + ":");
+                builder.studyGroup(StudyGroupReader.read(emptyCollection, scanner));
+            }
+        });
+
+        handlers.put(REMOVE_BY_ID, (builder, args) -> {
+            if (args.isEmpty()) {
+                throw new IllegalArgumentException("Формат: remove_by_id id");
+            }
+            builder.id(Long.parseLong(args));
+        });
+
+        handlers.put(REMOVE_ANY_BY_STUDENTS_COUNT, (builder, args) -> {
+            if (args.isEmpty()) {
+                throw new IllegalArgumentException("Формат: remove_any_by_students_count studentsCount");
+            }
+            builder.studentsCount(Long.parseLong(args));
+        });
+
+        handlers.put(COUNT_GREATER_THAN_EXPELLED_STUDENTS, (builder, args) -> {
+            if (args.isEmpty()) {
+                throw new IllegalArgumentException("Формат: count_greater_than_expelled_students expelledStudents");
+            }
+            builder.expelledStudents(Integer.parseInt(args));
+        });
     }
 
     public void start() {
@@ -92,80 +156,23 @@ public class ConsoleReader {
             return null;
         }
 
-        CommandRequest.Builder builder = new CommandRequest.Builder().type(type);
-
-        try {
-            switch (type) {
-                case HELP:
-                case INFO:
-                case SHOW:
-                case CLEAR:
-                    break;
-
-                case ADD:
-                case ADD_IF_MAX:
-                case REMOVE_GREATER:
-                    builder.studyGroup(StudyGroupReader.read(emptyCollection, scanner));
-                    break;
-
-                case UPDATE:
-                    if (cmdArgs.contains("{") && cmdArgs.contains("}")) {
-                        String[] updateArgs = cmdArgs.split("\\s+", 2);
-                        if (updateArgs.length < 2) {
-                            System.out.println("Формат: update id {element}");
-                            return null;
-                        }
-                        builder.id(Long.parseLong(updateArgs[0]));
-                        StudyGroupReader.setScriptMode(updateArgs[1]);
-                        builder.studyGroup(StudyGroupReader.read(emptyCollection, scanner));
-                    } else {
-                        if (cmdArgs.isEmpty()) {
-                            System.out.println("Формат: update id");
-                            return null;
-                        }
-                        builder.id(Long.parseLong(cmdArgs));
-                        StudyGroupReader.setConsoleMode();
-                        System.out.println("Введите новые данные для элемента с id " + Long.parseLong(cmdArgs) + ":");
-                        builder.studyGroup(StudyGroupReader.read(emptyCollection, scanner));
-                    }
-                    break;
-
-                case REMOVE_BY_ID:
-                    if (cmdArgs.isEmpty()) {
-                        System.out.println("Формат: remove_by_id id");
-                        return null;
-                    }
-                    builder.id(Long.parseLong(cmdArgs));
-                    break;
-
-                case REMOVE_ANY_BY_STUDENTS_COUNT:
-                    if (cmdArgs.isEmpty()) {
-                        System.out.println("Формат: remove_any_by_students_count studentsCount");
-                        return null;
-                    }
-                    builder.studentsCount(Long.parseLong(cmdArgs));
-                    break;
-
-                case MIN_BY_SEMESTER_ENUM:
-                    break;
-
-                case COUNT_GREATER_THAN_EXPELLED_STUDENTS:
-                    if (cmdArgs.isEmpty()) {
-                        System.out.println("Формат: count_greater_than_expelled_students expelledStudents");
-                        return null;
-                    }
-                    builder.expelledStudents(Integer.parseInt(cmdArgs));
-                    break;
-
-                default:
-                    return null;
-            }
-        } catch (NumberFormatException e) {
-            System.out.println("Ошибка: число введено неверно");
+        CommandHandler handler = handlers.get(type);
+        if (handler == null) {
             return null;
         }
 
-        return builder.build();
+        CommandRequest.Builder builder = new CommandRequest.Builder().type(type);
+
+        try {
+            handler.handle(builder, cmdArgs);
+            return builder.build();
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+            return null;
+        } catch (Exception e) {
+            System.out.println("Ошибка: число введено неверно");
+            return null;
+        }
     }
 
     private void addToHistory(String command) {

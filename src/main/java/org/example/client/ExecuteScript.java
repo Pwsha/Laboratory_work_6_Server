@@ -3,7 +3,6 @@ package org.example.client;
 import org.example.common.command.CommandRequest;
 import org.example.common.command.CommandResponse;
 import org.example.common.command.CommandType;
-import org.example.client.StudyGroupReader;
 import org.example.common.init.*;
 import org.example.common.init.StudyGroup;
 
@@ -11,17 +10,74 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
 
+import static org.example.common.command.CommandType.*;
+
 public class ExecuteScript {
     private final Client client;
     private final Scanner scanner;
     private final ConsoleReader consoleReader;
     private final HashSet<StudyGroup> emptyCollection = new HashSet<>();
     private final Set<String> executingScripts = new HashSet<>();
+    private final Map<CommandType, ScriptCommandHandler> handlers;
+
+    @FunctionalInterface
+    private interface ScriptCommandHandler {
+        void handle(CommandRequest.Builder builder, String cmdArgs) throws Exception;
+    }
 
     public ExecuteScript(Client client, Scanner scanner, ConsoleReader consoleReader) {
         this.client = client;
         this.scanner = scanner;
         this.consoleReader = consoleReader;
+        this.handlers = new HashMap<>();
+        initHandlers();
+    }
+
+    private void initHandlers() {
+        CommandType[] noArgs = {HELP, INFO, SHOW, CLEAR, HISTORY, MIN_BY_SEMESTER_ENUM};
+        for (CommandType type : noArgs) {
+            handlers.put(type, (builder, args) -> {});
+        }
+
+        ScriptCommandHandler groupHandler = (builder, args) -> {
+            if (args.isEmpty() || !args.startsWith("{")) {
+                throw new IllegalArgumentException("Ошибка: данные должны быть в фигурных скобках");
+            }
+            String parseInput = args.substring(1, args.length() - 1);
+            builder.studyGroup(parseGroupFromString(parseInput));
+        };
+
+        handlers.put(ADD, groupHandler);
+        handlers.put(ADD_IF_MAX, groupHandler);
+        handlers.put(REMOVE_GREATER, groupHandler);
+
+        handlers.put(UPDATE, (builder, args) -> {
+            String[] updateArgs = args.split("\\s+", 2);
+            if (updateArgs.length < 2) {
+                throw new IllegalArgumentException("Формат: update id {element}");
+            }
+            if (!updateArgs[1].startsWith("{") || !updateArgs[1].endsWith("}")) {
+                throw new IllegalArgumentException("Ошибка: данные должны быть в фигурных скобках");
+            }
+            builder.id(Long.parseLong(updateArgs[0]));
+            String updateInput = updateArgs[1].substring(1, updateArgs[1].length() - 1);
+            builder.studyGroup(parseGroupFromString(updateInput));
+        });
+
+        handlers.put(REMOVE_BY_ID, (builder, args) -> {
+            if (args.isEmpty()) throw new IllegalArgumentException("Формат: remove_by_id id");
+            builder.id(Long.parseLong(args));
+        });
+
+        handlers.put(REMOVE_ANY_BY_STUDENTS_COUNT, (builder, args) -> {
+            if (args.isEmpty()) throw new IllegalArgumentException("Формат: remove_any_by_students_count studentsCount");
+            builder.studentsCount(Long.parseLong(args));
+        });
+
+        handlers.put(COUNT_GREATER_THAN_EXPELLED_STUDENTS, (builder, args) -> {
+            if (args.isEmpty()) throw new IllegalArgumentException("Формат: count_greater_than_expelled_students expelledStudents");
+            builder.expelledStudents(Integer.parseInt(args));
+        });
     }
 
     public void execute(String filename) {
@@ -55,32 +111,27 @@ public class ExecuteScript {
 
                 System.out.println("[" + lineNumber + "] " + line);
 
-                // Разбираем строку на команду и аргументы
                 String[] parts = line.split("\\s+", 2);
                 String cmdName = parts[0].toLowerCase();
                 String cmdArgs = parts.length > 1 ? parts[1] : "";
 
-                // execute_script внутри скрипта - рекурсия
                 if (cmdName.equals("execute_script")) {
                     execute(cmdArgs);
                     continue;
                 }
 
-                // exit в скрипте
                 if (cmdName.equals("exit")) {
                     System.out.println("  Завершение работы клиента");
                     client.disconnect();
                     return;
                 }
 
-                // Создаём запрос для сервера
                 CommandRequest request = buildRequest(cmdName, cmdArgs);
                 if (request == null) {
                     System.out.println("  Ошибка: неверный формат команды");
                     continue;
                 }
 
-                // Отправляем на сервер
                 if (!client.isConnected() && !client.connect()) {
                     System.out.println("  Ошибка: нет подключения к серверу");
                     continue;
@@ -88,7 +139,6 @@ public class ExecuteScript {
 
                 CommandResponse response = client.sendRequest(request);
 
-                // Выводим результат
                 if (!response.isSuccess()) {
                     System.out.println("  Ошибка: " + response.getMessage());
                 } else {
@@ -121,73 +171,23 @@ public class ExecuteScript {
             return null;
         }
 
-        CommandRequest.Builder builder = new CommandRequest.Builder().type(type);
-
-        try {
-            switch (type) {
-                case HELP:
-                case INFO:
-                case SHOW:
-                case CLEAR:
-                case HISTORY:
-                    // Команды без аргументов
-                    break;
-
-                case ADD:
-                case ADD_IF_MAX:
-                case REMOVE_GREATER:
-                    // Парсим строку с данными
-                    if (cmdArgs.isEmpty() || !cmdArgs.startsWith("{")) {
-                        System.out.println("  Ошибка: данные должны быть в фигурных скобках");
-                        return null;
-                    }
-                    String parseInput = cmdArgs.substring(1, cmdArgs.length() - 1);
-                    builder.studyGroup(parseGroupFromString(parseInput));
-                    break;
-
-                case UPDATE:
-                    // Формат: update id {element}
-                    String[] updateArgs = cmdArgs.split("\\s+", 2);
-                    if (updateArgs.length < 2) {
-                        System.out.println("  Формат: update id {element}");
-                        return null;
-                    }
-                    if (!updateArgs[1].startsWith("{") || !updateArgs[1].endsWith("}")) {
-                        System.out.println("  Ошибка: данные должны быть в фигурных скобках");
-                        return null;
-                    }
-                    builder.id(Long.parseLong(updateArgs[0]));
-                    String updateInput = updateArgs[1].substring(1, updateArgs[1].length() - 1);
-                    builder.studyGroup(parseGroupFromString(updateInput));
-                    break;
-
-                case REMOVE_BY_ID:
-                    if (cmdArgs.isEmpty()) return null;
-                    builder.id(Long.parseLong(cmdArgs));
-                    break;
-
-                case REMOVE_ANY_BY_STUDENTS_COUNT:
-                    if (cmdArgs.isEmpty()) return null;
-                    builder.studentsCount(Long.parseLong(cmdArgs));
-                    break;
-
-                case MIN_BY_SEMESTER_ENUM:
-                    break;
-
-                case COUNT_GREATER_THAN_EXPELLED_STUDENTS:
-                    if (cmdArgs.isEmpty()) return null;
-                    builder.expelledStudents(Integer.parseInt(cmdArgs));
-                    break;
-
-                default:
-                    return null;
-            }
-        } catch (NumberFormatException e) {
-            System.out.println("  Ошибка: число введено неверно");
+        ScriptCommandHandler handler = handlers.get(type);
+        if (handler == null) {
             return null;
         }
 
-        return builder.build();
+        CommandRequest.Builder builder = new CommandRequest.Builder().type(type);
+
+        try {
+            handler.handle(builder, cmdArgs);
+            return builder.build();
+        } catch (IllegalArgumentException e) {
+            System.out.println("  " + e.getMessage());
+            return null;
+        } catch (Exception e) {
+            System.out.println("  Ошибка: число введено неверно");
+            return null;
+        }
     }
 
     private StudyGroup parseGroupFromString(String input) {

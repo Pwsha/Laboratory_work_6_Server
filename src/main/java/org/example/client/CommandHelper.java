@@ -78,7 +78,6 @@ public class CommandHelper {
             admin = readPerson(scanner);
         }
 
-        // Используем Builder для создания StudyGroup
         return new StudyGroup.Builder()
                 .name(name)
                 .coordinates(coordinates)
@@ -115,7 +114,6 @@ public class CommandHelper {
             }
         }
 
-        // Используем Builder для создания Coordinates
         return new Coordinates.Builder()
                 .x(x)
                 .y(y)
@@ -170,7 +168,6 @@ public class CommandHelper {
             location = readLocation(scanner);
         }
 
-        // Используем Builder для создания Person
         return new Person.Builder()
                 .name(name)
                 .birthday(birthday)
@@ -213,7 +210,6 @@ public class CommandHelper {
             }
         }
 
-        // Используем Builder для создания Location
         return new Location.Builder()
                 .x(x)
                 .y(y)
