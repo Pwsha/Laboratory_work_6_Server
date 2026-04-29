@@ -8,7 +8,6 @@ import java.util.Scanner;
 public class StudyGroupReader {
     private static boolean isScriptMode = false;
     private static String scriptInput = null;
-    private static final HashSet<StudyGroup> EMPTY_COLLECTION = new HashSet<>();
 
     public static void setScriptMode(String input) {
         isScriptMode = true;
@@ -29,10 +28,6 @@ public class StudyGroupReader {
     }
 
     public static StudyGroup read(HashSet<StudyGroup> collection, Scanner scanner) {
-        if (collection == null) {
-            collection = EMPTY_COLLECTION;
-        }
-
         if (isScriptMode && scriptInput != null) {
             return GroupParser.parseFromString(scriptInput, collection);
         } else {

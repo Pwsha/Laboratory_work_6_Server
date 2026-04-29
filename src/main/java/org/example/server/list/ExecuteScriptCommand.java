@@ -7,14 +7,14 @@ import org.example.server.CollectionManager;
 import java.util.Scanner;
 
 /**
- * Класс команды history
+ * Класс команды скрипта
  * @author Pwsha
  * @version v1.3
  */
 public class ExecuteScriptCommand implements Command {
     @Override
     public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner){
-        return CommandResponse.success("Скрипт доступен только на клиенте");
+        return CommandResponse.success("Выполнение скрипта");
     }
 
     @Override

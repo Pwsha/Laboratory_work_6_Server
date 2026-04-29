@@ -10,7 +10,7 @@ public class HistoryCommand implements Command {
 
     @Override
     public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
-        return CommandResponse.success("История команд доступна только на клиенте");
+        return CommandResponse.success("История команд");
     }
 
     @Override

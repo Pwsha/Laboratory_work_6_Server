@@ -3,33 +3,23 @@ package org.example.client;
 import org.example.common.command.CommandRequest;
 import org.example.common.command.CommandResponse;
 import org.example.common.command.CommandType;
-import org.example.common.init.*;
 import org.example.common.init.StudyGroup;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
+import java.util.function.BiConsumer;
 
 import static org.example.common.command.CommandType.*;
 
 public class ExecuteScript {
     private final Client client;
-    private final Scanner scanner;
-    private final ConsoleReader consoleReader;
     private final HashSet<StudyGroup> emptyCollection = new HashSet<>();
     private final Set<String> executingScripts = new HashSet<>();
-    private final Map<CommandType, ScriptCommandHandler> handlers;
+    private final Map<CommandType, BiConsumer<CommandRequest.Builder, String>> handlers = new HashMap<>();
 
-    @FunctionalInterface
-    private interface ScriptCommandHandler {
-        void handle(CommandRequest.Builder builder, String cmdArgs) throws Exception;
-    }
-
-    public ExecuteScript(Client client, Scanner scanner, ConsoleReader consoleReader) {
+    public ExecuteScript(Client client) {
         this.client = client;
-        this.scanner = scanner;
-        this.consoleReader = consoleReader;
-        this.handlers = new HashMap<>();
         initHandlers();
     }
 
@@ -39,14 +29,13 @@ public class ExecuteScript {
             handlers.put(type, (builder, args) -> {});
         }
 
-        ScriptCommandHandler groupHandler = (builder, args) -> {
+        BiConsumer<CommandRequest.Builder, String> groupHandler = (builder, args) -> {
             if (args.isEmpty() || !args.startsWith("{")) {
                 throw new IllegalArgumentException("Ошибка: данные должны быть в фигурных скобках");
             }
             String parseInput = args.substring(1, args.length() - 1);
-            builder.studyGroup(parseGroupFromString(parseInput));
+            builder.studyGroup(GroupParser.parseFromString(parseInput, emptyCollection));
         };
-
         handlers.put(ADD, groupHandler);
         handlers.put(ADD_IF_MAX, groupHandler);
         handlers.put(REMOVE_GREATER, groupHandler);
@@ -61,7 +50,7 @@ public class ExecuteScript {
             }
             builder.id(Long.parseLong(updateArgs[0]));
             String updateInput = updateArgs[1].substring(1, updateArgs[1].length() - 1);
-            builder.studyGroup(parseGroupFromString(updateInput));
+            builder.studyGroup(GroupParser.parseFromString(updateInput, emptyCollection));
         });
 
         handlers.put(REMOVE_BY_ID, (builder, args) -> {
@@ -138,22 +127,7 @@ public class ExecuteScript {
                 }
 
                 CommandResponse response = client.sendRequest(request);
-
-                if (!response.isSuccess()) {
-                    System.out.println("  Ошибка: " + response.getMessage());
-                } else {
-                    System.out.println("  " + response.getMessage());
-
-                    if (response.getCollection() != null && !response.getCollection().isEmpty()) {
-                        response.getCollection().forEach(g -> System.out.println("    " + g));
-                    }
-                    if (response.getGroup() != null) {
-                        System.out.println("    " + response.getGroup());
-                    }
-                    if (response.getCount() != null) {
-                        System.out.println("    " + response.getCount());
-                    }
-                }
+                printResponse(response);
             }
 
             System.out.println("Скрипт выполнен");
@@ -171,7 +145,7 @@ public class ExecuteScript {
             return null;
         }
 
-        ScriptCommandHandler handler = handlers.get(type);
+        BiConsumer<CommandRequest.Builder, String> handler = handlers.get(type);
         if (handler == null) {
             return null;
         }
@@ -179,7 +153,7 @@ public class ExecuteScript {
         CommandRequest.Builder builder = new CommandRequest.Builder().type(type);
 
         try {
-            handler.handle(builder, cmdArgs);
+            handler.accept(builder, cmdArgs);
             return builder.build();
         } catch (IllegalArgumentException e) {
             System.out.println("  " + e.getMessage());
@@ -190,35 +164,22 @@ public class ExecuteScript {
         }
     }
 
-    private StudyGroup parseGroupFromString(String input) {
-        String[] parts = input.split(",");
-
-        if (parts.length < 7) {
-            throw new IllegalArgumentException("Недостаточно данных");
+    private void printResponse(CommandResponse response) {
+        if (!response.isSuccess()) {
+            System.out.println("  Ошибка: " + response.getMessage());
+            return;
         }
 
-        try {
-            int idx = 0;
-            String name = parts[idx++].trim();
-            Float x = Float.parseFloat(parts[idx++].trim());
-            Long y = Long.parseLong(parts[idx++].trim());
-            long studentsCount = Long.parseLong(parts[idx++].trim());
-            int expelledStudents = Integer.parseInt(parts[idx++].trim());
-            FormOfEducation form = FormOfEducation.valueOf(parts[idx++].trim().toUpperCase());
-            Semester semester = Semester.valueOf(parts[idx++].trim().toUpperCase());
+        System.out.println("  " + response.getMessage());
 
-            Coordinates coordinates = new Coordinates.Builder().x(x).y(y).build();
-
-            return new StudyGroup.Builder()
-                    .name(name)
-                    .coordinates(coordinates)
-                    .studentsCount(studentsCount)
-                    .expelledStudents(expelledStudents)
-                    .formOfEducation(form)
-                    .semesterEnum(semester)
-                    .build();
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Ошибка парсинга: " + e.getMessage());
+        if (response.getCollection() != null && !response.getCollection().isEmpty()) {
+            response.getCollection().forEach(g -> System.out.println("    " + g));
+        }
+        if (response.getGroup() != null) {
+            System.out.println("    " + response.getGroup());
+        }
+        if (response.getCount() != null) {
+            System.out.println("    " + response.getCount());
         }
     }
 }

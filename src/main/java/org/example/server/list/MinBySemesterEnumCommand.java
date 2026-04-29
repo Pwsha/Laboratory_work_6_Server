@@ -17,15 +17,10 @@ public class MinBySemesterEnumCommand implements Command {
 
     @Override
     public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
-        if (manager.getCollection().isEmpty()) {
-            return CommandResponse.error("Коллекция пуста");
-        }
-
-        StudyGroup min = manager.getCollection().stream()
+        return manager.getCollection().stream()
                 .min(Comparator.comparing(StudyGroup::getSemesterEnum))
-                .orElse(null);
-
-        return CommandResponse.withGroup("Элемент с минимальным semesterEnum:", min);
+                .map(min -> CommandResponse.withGroup("Элемент с минимальным semesterEnum:", min))
+                .orElse(CommandResponse.error("Коллекция пуста"));
     }
 
     @Override
