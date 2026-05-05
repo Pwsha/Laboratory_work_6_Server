@@ -1,0 +1,6 @@
+id,name,coordinates_x,coordinates_y,creationDate,studentsCount,expelledStudents,formOfEducation,semesterEnum,groupAdmin_name,groupAdmin_birthday,groupAdmin_weight,groupAdmin_passportID,groupAdmin_location_x,groupAdmin_location_y,groupAdmin_location_z
+1775043224799,frrg,55.0,444,2026-04-01T14:33:44.085729,44,5,EVENING_CLASSES,FIRST,,,,,,,
+1774960636847,frrg,55.0,4,2026-03-31T15:37:16.2507811,445,5,EVENING_CLASSES,FIRST,,,,,,,
+1774963244663,grrgrg,55.0,55,2026-03-31T16:20:43.9147776,5,5,DISTANCE_EDUCATION,SECOND,,,,,,,
+8011,rffrrg,33.0,56,2026-04-01T14:41:06.9446764,2,4,EVENING_CLASSES,FIRST,,,,,,,
+14,4rtrtt,33.0,33,2026-04-01T14:40:44.0421265,33,33,DISTANCE_EDUCATION,FIRST,,,,,,,
