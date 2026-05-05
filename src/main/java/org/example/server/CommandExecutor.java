@@ -23,6 +23,7 @@ public class CommandExecutor {
     private void initCommands() {
         commands.put(CommandType.INFO, new InfoCommand(manager));
         commands.put(CommandType.SHOW, new ShowCommand(manager));
+        commands.put(CommandType.SHOW_ODD, new ShowOddCommand(manager));
         commands.put(CommandType.ADD, new AddCommand(manager));
         commands.put(CommandType.UPDATE, new UpdateCommand(manager));
         commands.put(CommandType.REMOVE_BY_ID, new RemoveByIdCommand(manager));

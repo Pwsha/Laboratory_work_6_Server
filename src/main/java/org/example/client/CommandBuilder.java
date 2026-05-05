@@ -5,18 +5,14 @@ import org.example.common.command.CommandType;
 import org.example.common.init.StudyGroup;
 
 import java.util.*;
+import java.util.function.BiConsumer;
 
 import static org.example.common.command.CommandType.*;
 
 public class CommandBuilder {
     private final Scanner scanner;
     private final HashSet<StudyGroup> emptyCollection = new HashSet<>();
-    private final Map<CommandType, BuilderHandler> handlers = new HashMap<>();
-
-    @FunctionalInterface
-    private interface BuilderHandler {
-        void handle(CommandRequest.Builder builder, String cmdArgs) throws Exception;
-    }
+    private final Map<CommandType, BiConsumer<CommandRequest.Builder, String>> handlers = new HashMap<>();
 
     public CommandBuilder(Scanner scanner) {
         this.scanner = scanner;
@@ -24,12 +20,12 @@ public class CommandBuilder {
     }
 
     private void initHandlers() {
-        CommandType[] noArgs = {HELP, INFO, SHOW, CLEAR, MIN_BY_SEMESTER_ENUM, HISTORY};
+        CommandType[] noArgs = {HELP, INFO, SHOW, SHOW_ODD, CLEAR, MIN_BY_SEMESTER_ENUM, HISTORY};
         for (CommandType type : noArgs) {
             handlers.put(type, (builder, args) -> {});
         }
 
-        BuilderHandler groupHandler = (builder, args) ->
+        BiConsumer<CommandRequest.Builder, String> groupHandler = (builder, args) ->
                 builder.studyGroup(StudyGroupReader.read(emptyCollection, scanner));
         handlers.put(ADD, groupHandler);
         handlers.put(ADD_IF_MAX, groupHandler);
@@ -71,6 +67,10 @@ public class CommandBuilder {
         });
     }
 
+    public BiConsumer<CommandRequest.Builder, String> getHandler(CommandType type) {
+        return handlers.get(type);
+    }
+
     public CommandRequest build(String cmdName, String cmdArgs) {
         CommandType type = CommandType.fromString(cmdName);
         if (type == null) {
@@ -78,7 +78,7 @@ public class CommandBuilder {
             return null;
         }
 
-        BuilderHandler handler = handlers.get(type);
+        BiConsumer<CommandRequest.Builder, String> handler = handlers.get(type);
         if (handler == null) {
             return null;
         }
@@ -86,7 +86,7 @@ public class CommandBuilder {
         CommandRequest.Builder builder = new CommandRequest.Builder().type(type);
 
         try {
-            handler.handle(builder, cmdArgs);
+            handler.accept(builder, cmdArgs);
             return builder.build();
         } catch (IllegalArgumentException e) {
             System.out.println(e.getMessage());

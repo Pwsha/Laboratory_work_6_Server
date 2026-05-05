@@ -50,7 +50,7 @@ public class ClientHandler {
                 byte[] data = new byte[expectedLength];
                 dataBuffer.get(data);
 
-                // Десериализация и выполнение
+                // Десериализация
                 try (ByteArrayInputStream bais = new ByteArrayInputStream(data);
                      ObjectInputStream ois = new ObjectInputStream(bais)) {
 

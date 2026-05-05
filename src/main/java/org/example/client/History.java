@@ -15,7 +15,7 @@ public class History {
         }
     }
 
-    public void print() {
+    public void print_history() {
         if (history.isEmpty()) {
             System.out.println("История команд пуста");
         } else {

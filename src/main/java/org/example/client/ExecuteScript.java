@@ -3,70 +3,20 @@ package org.example.client;
 import org.example.common.command.CommandRequest;
 import org.example.common.command.CommandResponse;
 import org.example.common.command.CommandType;
-import org.example.common.init.StudyGroup;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.function.BiConsumer;
 
-import static org.example.common.command.CommandType.*;
-
 public class ExecuteScript {
     private final Client client;
-    private final HashSet<StudyGroup> emptyCollection = new HashSet<>();
+    private final CommandBuilder commandBuilder;
     private final Set<String> executingScripts = new HashSet<>();
-    private final Map<CommandType, BiConsumer<CommandRequest.Builder, String>> handlers = new HashMap<>();
 
-    public ExecuteScript(Client client) {
+    public ExecuteScript(Client client, CommandBuilder commandBuilder) {
         this.client = client;
-        initHandlers();
-    }
-
-    private void initHandlers() {
-        CommandType[] noArgs = {HELP, INFO, SHOW, CLEAR, HISTORY, MIN_BY_SEMESTER_ENUM};
-        for (CommandType type : noArgs) {
-            handlers.put(type, (builder, args) -> {});
-        }
-
-        BiConsumer<CommandRequest.Builder, String> groupHandler = (builder, args) -> {
-            if (args.isEmpty() || !args.startsWith("{")) {
-                throw new IllegalArgumentException("Ошибка: данные должны быть в фигурных скобках");
-            }
-            String parseInput = args.substring(1, args.length() - 1);
-            builder.studyGroup(GroupParser.parseFromString(parseInput, emptyCollection));
-        };
-        handlers.put(ADD, groupHandler);
-        handlers.put(ADD_IF_MAX, groupHandler);
-        handlers.put(REMOVE_GREATER, groupHandler);
-
-        handlers.put(UPDATE, (builder, args) -> {
-            String[] updateArgs = args.split("\\s+", 2);
-            if (updateArgs.length < 2) {
-                throw new IllegalArgumentException("Формат: update id {element}");
-            }
-            if (!updateArgs[1].startsWith("{") || !updateArgs[1].endsWith("}")) {
-                throw new IllegalArgumentException("Ошибка: данные должны быть в фигурных скобках");
-            }
-            builder.id(Long.parseLong(updateArgs[0]));
-            String updateInput = updateArgs[1].substring(1, updateArgs[1].length() - 1);
-            builder.studyGroup(GroupParser.parseFromString(updateInput, emptyCollection));
-        });
-
-        handlers.put(REMOVE_BY_ID, (builder, args) -> {
-            if (args.isEmpty()) throw new IllegalArgumentException("Формат: remove_by_id id");
-            builder.id(Long.parseLong(args));
-        });
-
-        handlers.put(REMOVE_ANY_BY_STUDENTS_COUNT, (builder, args) -> {
-            if (args.isEmpty()) throw new IllegalArgumentException("Формат: remove_any_by_students_count studentsCount");
-            builder.studentsCount(Long.parseLong(args));
-        });
-
-        handlers.put(COUNT_GREATER_THAN_EXPELLED_STUDENTS, (builder, args) -> {
-            if (args.isEmpty()) throw new IllegalArgumentException("Формат: count_greater_than_expelled_students expelledStudents");
-            builder.expelledStudents(Integer.parseInt(args));
-        });
+        this.commandBuilder = commandBuilder;
     }
 
     public void execute(String filename) {
@@ -145,7 +95,7 @@ public class ExecuteScript {
             return null;
         }
 
-        BiConsumer<CommandRequest.Builder, String> handler = handlers.get(type);
+        BiConsumer<CommandRequest.Builder, String> handler = commandBuilder.getHandler(type);
         if (handler == null) {
             return null;
         }

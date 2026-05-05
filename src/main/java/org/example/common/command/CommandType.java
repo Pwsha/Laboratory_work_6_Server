@@ -6,6 +6,7 @@ public enum CommandType implements Serializable {
     HELP,
     INFO,
     SHOW,
+    SHOW_ODD,
     ADD,
     EXIT,
     UPDATE,

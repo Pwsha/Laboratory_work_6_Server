@@ -19,7 +19,7 @@ public class ConsoleReader {
         this.history = new History();
         this.commandBuilder = new CommandBuilder(scanner);
         this.outputRequest = new OutputRequest();
-        this.executeScriptCommand = new ExecuteScript(client);
+        this.executeScriptCommand = new ExecuteScript(client, commandBuilder);
     }
 
     public void start() {
@@ -54,7 +54,7 @@ public class ConsoleReader {
             }
 
             if (cmdName.equals("history")) {
-                history.print();
+                history.print_history();
                 continue;
             }
 
