@@ -10,8 +10,8 @@ import java.util.*;
 public class ExecuteScript {
     private final Client client;
     private final CommandBuilder commandBuilder;
-    private final Set<String> executingScripts = new HashSet<>();
     private String authToken = null;
+    private final Set<String> executingScripts = new HashSet<>();
 
     public ExecuteScript(Client client, CommandBuilder commandBuilder) {
         this.client = client;
@@ -43,6 +43,8 @@ public class ExecuteScript {
         executingScripts.add(absolutePath);
         System.out.println("Выполнение скрипта: " + filename);
 
+        commandBuilder.setScriptMode(true);
+
         try (Scanner fileScanner = new Scanner(file)) {
             int lineNumber = 0;
 
@@ -68,7 +70,7 @@ public class ExecuteScript {
                     return;
                 }
 
-                CommandRequest request = commandBuilder.build(cmdName, cmdArgs);
+                CommandRequest request = commandBuilder.build(cmdName, cmdArgs, authToken);
                 if (request == null) {
                     System.out.println("  Ошибка: неверный формат команды");
                     continue;
@@ -88,6 +90,7 @@ public class ExecuteScript {
         } catch (FileNotFoundException e) {
             System.out.println("Ошибка при чтении файла: " + e.getMessage());
         } finally {
+            commandBuilder.setScriptMode(false);
             executingScripts.remove(absolutePath);
         }
     }

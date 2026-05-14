@@ -2,7 +2,6 @@ package org.example.client;
 
 import org.example.common.command.CommandRequest;
 import org.example.common.command.CommandResponse;
-import org.example.common.command.CommandType;
 
 import java.util.*;
 
@@ -13,8 +12,7 @@ public class ConsoleReader {
     private final CommandBuilder commandBuilder;
     private final OutputRequest outputRequest;
     private final ExecuteScript executeScriptCommand;
-    private String authToken = null;
-    private String currentLogin = null;
+    private final AuthHandler authHandler;
 
     public ConsoleReader(Client client) {
         this.client = client;
@@ -22,12 +20,15 @@ public class ConsoleReader {
         this.history = new History();
         this.commandBuilder = new CommandBuilder(scanner);
         this.outputRequest = new OutputRequest();
+        this.authHandler = new AuthHandler(client, outputRequest);
         this.executeScriptCommand = new ExecuteScript(client, commandBuilder);
     }
 
     public void start() {
         System.out.println("Клиент запущен. Введите 'help' для справки.");
         System.out.println("Сначала зарегистрируйтесь (register) или войдите (login)");
+
+        commandBuilder.setScriptMode(false);
 
         while (true) {
             System.out.print("> ");
@@ -46,35 +47,32 @@ public class ConsoleReader {
             String cmdName = parts[0].toLowerCase();
             String cmdArgs = parts.length > 1 ? parts[1] : "";
 
-            // Выход
             if (cmdName.equals("exit")) {
-                if (authToken != null) {
-                    sendLogout();
+                if (authHandler.isAuthenticated()) {
+                    authHandler.handleLogout();
                 }
                 System.out.println("Завершение работы клиента");
                 client.disconnect();
                 break;
             }
 
-            // LOGIN
             if (cmdName.equals("login")) {
-                handleLogin(cmdArgs);
+                authHandler.handleLogin(cmdArgs);
+                executeScriptCommand.setAuthToken(authHandler.getAuthToken());
                 continue;
             }
 
-            // REGISTER
             if (cmdName.equals("register")) {
-                handleRegister(cmdArgs);
+                authHandler.handleRegister(cmdArgs);
                 continue;
             }
 
-            // Проверка авторизации
-            if (authToken == null) {
+            if (!authHandler.isAuthenticated()) {
                 System.out.println("Ошибка: необходимо войти (login) или зарегистрироваться (register)");
                 continue;
             }
 
-            executeScriptCommand.setAuthToken(authToken);
+            executeScriptCommand.setAuthToken(authHandler.getAuthToken());
 
             if (cmdName.equals("execute_script")) {
                 executeScriptCommand.execute(cmdArgs);
@@ -87,13 +85,14 @@ public class ConsoleReader {
             }
 
             if (cmdName.equals("logout")) {
-                handleLogout();
+                authHandler.handleLogout();
+                executeScriptCommand.setAuthToken(null);
                 continue;
             }
 
             history.add(cmdName);
 
-            CommandRequest request = buildRequestWithToken(cmdName, cmdArgs);
+            CommandRequest request = commandBuilder.build(cmdName, cmdArgs, authHandler.getAuthToken());
             if (request == null) continue;
 
             if (!client.isConnected() && !client.connect()) {
@@ -106,115 +105,5 @@ public class ConsoleReader {
         }
 
         scanner.close();
-    }
-
-    private CommandRequest buildRequestWithToken(String cmdName, String cmdArgs) {
-        CommandType type = CommandType.fromString(cmdName);
-        if (type == null) {
-            System.out.println("Неизвестная команда");
-            return null;
-        }
-
-        CommandRequest.Builder builder = new CommandRequest.Builder()
-                .type(type)
-                .stringArg(authToken);  // добавляем токен
-
-        var handler = commandBuilder.getHandler(type);
-        if (handler == null) {
-            return null;
-        }
-
-        try {
-            handler.accept(builder, cmdArgs);
-            return builder.build();
-        } catch (IllegalArgumentException e) {
-            System.out.println(e.getMessage());
-            return null;
-        } catch (Exception e) {
-            System.out.println("Ошибка: число введено неверно");
-            return null;
-        }
-    }
-
-    private void handleLogin(String args) {
-        String[] parts = args.split("\\s+");
-        if (parts.length < 2) {
-            System.out.println("Формат: login логин пароль");
-            return;
-        }
-
-        String login = parts[0];
-        String password = parts[1];
-
-        CommandRequest request = new CommandRequest.Builder()
-                .type(CommandType.LOGIN)
-                .login(login)
-                .password(password)
-                .build();
-
-        if (!client.isConnected() && !client.connect()) {
-            System.out.println("Нет подключения к серверу");
-            return;
-        }
-
-        CommandResponse response = client.sendRequest(request);
-        outputRequest.printResponse(response);
-
-        if (response.isSuccess() && response.getMessage().contains("Ваш токен:")) {
-            String msg = response.getMessage();
-            authToken = msg.substring(msg.indexOf("Ваш токен:") + 11).trim();
-            currentLogin = login;
-            System.out.println("Авторизован как: " + currentLogin);
-            executeScriptCommand.setAuthToken(authToken);
-        }
-    }
-
-    private void handleRegister(String args) {
-        String[] parts = args.split("\\s+");
-        if (parts.length < 2) {
-            System.out.println("Формат: register логин пароль");
-            return;
-        }
-
-        String login = parts[0];
-        String password = parts[1];
-
-        CommandRequest request = new CommandRequest.Builder()
-                .type(CommandType.REGISTER)
-                .login(login)
-                .password(password)
-                .build();
-
-        if (!client.isConnected() && !client.connect()) {
-            System.out.println("Нет подключения к серверу");
-            return;
-        }
-
-        CommandResponse response = client.sendRequest(request);
-        outputRequest.printResponse(response);
-    }
-
-    private void handleLogout() {
-        if (authToken == null) {
-            System.out.println("Вы не авторизованы");
-            return;
-        }
-        sendLogout();
-        authToken = null;
-        currentLogin = null;
-        executeScriptCommand.setAuthToken(null);
-        System.out.println("Вы вышли из системы");
-    }
-
-    private void sendLogout() {
-        CommandRequest request = new CommandRequest.Builder()
-                .type(CommandType.LOGOUT)
-                .stringArg(authToken)
-                .build();
-
-        if (client.isConnected()) {
-            CommandResponse response = client.sendRequest(request);
-            outputRequest.printResponse(response);
-        }
     }
 }

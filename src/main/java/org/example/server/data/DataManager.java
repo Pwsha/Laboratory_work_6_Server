@@ -10,20 +10,20 @@ import java.util.HashSet;
 import java.util.Optional;
 
 public class DataManager {
+    //Для локалки
     private static final String HOST = "localhost";
     private static final int PORT = 5432;
     private static final String DATABASE = "studs";
+    private static final String USER = "postgres";
+    private static final String PASSWORD = "1234";
 
-    // Для кафедрального сервера (закомментируйте строки выше и раскомментируйте эти):
+    // Для сервера:
     // private static final String HOST = "pg";
     // private static final int PORT = 5432;
     // private static final String DATABASE = "studs";
     //private static final String PASSWORD = "KAPHCzlDOThiKsGT";
 
     private static final String URL = String.format("jdbc:postgresql://%s:%d/%s", HOST, PORT, DATABASE);
-
-    private static final String USER = "postgres";
-    private static final String PASSWORD = "1234";
 
     private Connection connection;
 
@@ -54,7 +54,6 @@ public class DataManager {
             CREATE SEQUENCE IF NOT EXISTS study_group_id_seq START WITH 1 INCREMENT BY 1
         """;
 
-        // Таблица пользователей
         String createUsersTable = """
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,

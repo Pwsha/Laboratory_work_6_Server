@@ -26,7 +26,7 @@ public class CountGreaterThanExpelledStudentsCommand implements Command {
                 .count();
 
         return CommandResponse.withCount(
-                "Количество элементов с expelledStudents > " + expelledStudents + ": " + count, count);
+                "Количество элементов с expelledStudents > " + expelledStudents + ": ", count);
     }
 
     @Override

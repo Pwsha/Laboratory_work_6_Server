@@ -44,7 +44,6 @@ public class CollectionManager {
         if (dbManager.updateGroup(id, newGroup, userId)) {
             synchronized (collection) {
                 collection.removeIf(g -> g.getId().equals(id));
-                newGroup.setId(id);
                 collection.add(newGroup);
             }
             return true;

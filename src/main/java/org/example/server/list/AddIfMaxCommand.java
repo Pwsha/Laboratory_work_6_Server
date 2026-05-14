@@ -4,10 +4,8 @@ import org.example.common.command.CommandRequest;
 import org.example.common.command.CommandResponse;
 import org.example.common.init.StudyGroup;
 import org.example.server.CollectionManager;
-import org.example.client.CommandHelper;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.Scanner;
 
 public class AddIfMaxCommand implements Command {
@@ -26,23 +24,27 @@ public class AddIfMaxCommand implements Command {
         }
 
         if (manager.getCollection().isEmpty()) {
-            Long newId = CommandHelper.generateId((HashSet<StudyGroup>) manager.getCollection());
-            group.setId(newId);
             group.setCreationDate(LocalDateTime.now());
-            manager.add(group, userId);
-            return CommandResponse.success("Элемент добавлен (коллекция была пуста)");
+            boolean success = manager.add(group, userId);
+            if (success) {
+                return CommandResponse.success("Элемент добавлен (коллекция была пуста) с id: " + group.getId());
+            } else {
+                return CommandResponse.error("Ошибка при добавлении в БД");
+            }
         }
 
         StudyGroup max = manager.getCollection().stream()
                 .max(StudyGroup::compareTo)
                 .orElse(null);
 
-        if (group.compareTo(max) > 0) {
-            Long newId = CommandHelper.generateId((HashSet<StudyGroup>) manager.getCollection());
-            group.setId(newId);
+        if (max != null && group.compareTo(max) > 0) {
             group.setCreationDate(LocalDateTime.now());
-            manager.add(group, userId);
-            return CommandResponse.success("Элемент добавлен (превышает максимальный)");
+            boolean success = manager.add(group, userId);
+            if (success) {
+                return CommandResponse.success("Элемент добавлен (превышает максимальный) с id: " + group.getId());
+            } else {
+                return CommandResponse.error("Ошибка при добавлении в БД");
+            }
         }
 
         return CommandResponse.success("Элемент не добавлен (не превышает максимальный)");
@@ -50,8 +52,10 @@ public class AddIfMaxCommand implements Command {
 
     @Override
     public String getName() { return "add_if_max"; }
+
     @Override
     public String getDescription() { return "добавить элемент, если он превышает максимальный"; }
+
     @Override
     public String getSyntax() { return "add_if_max {element}"; }
 }

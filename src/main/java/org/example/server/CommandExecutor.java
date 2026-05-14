@@ -62,7 +62,6 @@ public class CommandExecutor {
             return authManager.handleLogout(request);
         }
 
-        // Получаем userId для проверки прав
         java.util.Optional<Integer> userIdOpt = authManager.getUserId(request);
         if (userIdOpt.isEmpty()) {
             return CommandResponse.error("Сессия не найдена. Выполните login");
