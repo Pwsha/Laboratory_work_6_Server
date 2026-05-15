@@ -23,25 +23,16 @@ public class AddIfMaxCommand implements Command {
             return CommandResponse.error("Не указан элемент");
         }
 
-        if (manager.getCollection().isEmpty()) {
-            group.setCreationDate(LocalDateTime.now());
-            boolean success = manager.add(group, userId);
-            if (success) {
-                return CommandResponse.success("Элемент добавлен (коллекция была пуста) с id: " + group.getId());
-            } else {
-                return CommandResponse.error("Ошибка при добавлении в БД");
-            }
-        }
+        group.setCreationDate(LocalDateTime.now());
 
         StudyGroup max = manager.getCollection().stream()
                 .max(StudyGroup::compareTo)
                 .orElse(null);
 
-        if (max != null && group.compareTo(max) > 0) {
-            group.setCreationDate(LocalDateTime.now());
+        if (max == null || group.compareTo(max) > 0) {
             boolean success = manager.add(group, userId);
             if (success) {
-                return CommandResponse.success("Элемент добавлен (превышает максимальный) с id: " + group.getId());
+                return CommandResponse.success("Элемент добавлен" + (max == null ? " (коллекция была пуста)" : " (превышает максимальный)"));
             } else {
                 return CommandResponse.error("Ошибка при добавлении в БД");
             }

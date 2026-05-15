@@ -5,27 +5,20 @@ import org.example.common.init.Coordinates;
 import org.example.common.init.FormOfEducation;
 import org.example.common.init.Semester;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.*;
 import java.util.HashSet;
 import java.util.Optional;
+import java.util.Properties;
 
 public class DataManager {
-    //Для локалки
-    private static final String HOST = "localhost";
-    private static final int PORT = 5432;
-    private static final String DATABASE = "studs";
-    private static final String USER = "postgres";
-    private static final String PASSWORD = "1234";
-
-    // Для сервера:
-    // private static final String HOST = "pg";
-    // private static final int PORT = 5432;
-    // private static final String DATABASE = "studs";
-    //private static final String PASSWORD = "KAPHCzlDOThiKsGT";
-
-    private static final String URL = String.format("jdbc:postgresql://%s:%d/%s", HOST, PORT, DATABASE);
-
     private Connection connection;
+    private final String host;
+    private final int port;
+    private final String database;
+    private final String user;
+    private final String password;
 
     static {
         try {
@@ -36,13 +29,38 @@ public class DataManager {
     }
 
     public DataManager() {
+        Properties props = new Properties();
+
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties")) {
+            if (input == null) {
+                System.err.println("Ошибка: Файл config.properties не найден!");
+            }
+
+            props.load(input);
+
+        } catch (IOException e) {
+            throw new RuntimeException("Ошибка загрузки config.properties: " + e.getMessage(), e);
+        }
+
+        this.host = props.getProperty("db.host", "localhost");
+        this.port = Integer.parseInt(props.getProperty("db.port", "5432"));
+        this.database = props.getProperty("db.name", "studs");
+        this.user = props.getProperty("db.user", "postgres");
+        this.password = props.getProperty("db.password");
+
+        if (this.password == null || this.password.isEmpty()) {
+            System.err.println("Ошибка: Пароль не найден в config.properties!");
+        }
+
+        String url = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+
         try {
-            this.connection = DriverManager.getConnection(URL, USER, PASSWORD);
+            this.connection = DriverManager.getConnection(url, user, password);
             System.out.println("Подключение к БД успешно!");
-            System.out.println("  Хост: " + HOST);
-            System.out.println("  Порт: " + PORT);
-            System.out.println("  База: " + DATABASE);
-            System.out.println("  Пользователь: " + USER);
+            System.out.println("Хост: " + host);
+            System.out.println("Порт: " + port);
+            System.out.println("База: " + database);
+            System.out.println("Пользователь: " + user);
             initTables();
         } catch (SQLException e) {
             throw new RuntimeException("Ошибка подключения к БД: " + e.getMessage(), e);
@@ -81,7 +99,7 @@ public class DataManager {
             stmt.execute(createSequence);
             stmt.execute(createUsersTable);
             stmt.execute(createStudyGroupTable);
-            System.out.println("Таблицы инициализированы");
+            System.out.println("📋 Таблицы инициализированы");
         }
     }
 
@@ -245,7 +263,7 @@ public class DataManager {
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
-                System.out.println("Соединение с БД закрыто");
+                System.out.println("🔌 Соединение с БД закрыто");
             }
         } catch (SQLException e) {
             System.err.println("Ошибка закрытия соединения: " + e.getMessage());
