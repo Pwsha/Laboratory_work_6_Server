@@ -18,7 +18,10 @@ public enum CommandType implements Serializable {
     REMOVE_ANY_BY_STUDENTS_COUNT,
     MIN_BY_SEMESTER_ENUM,
     COUNT_GREATER_THAN_EXPELLED_STUDENTS,
-    EXECUTE_SCRIPT;
+    EXECUTE_SCRIPT,
+    LOGIN,
+    REGISTER,
+    LOGOUT;
 
     public static CommandType fromString(String name) {
         try {

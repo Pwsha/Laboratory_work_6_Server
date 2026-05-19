@@ -2,21 +2,24 @@ package org.example.client;
 
 import org.example.common.command.CommandRequest;
 import org.example.common.command.CommandResponse;
-import org.example.common.command.CommandType;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
-import java.util.function.BiConsumer;
 
 public class ExecuteScript {
     private final Client client;
     private final CommandBuilder commandBuilder;
+    private String authToken = null;
     private final Set<String> executingScripts = new HashSet<>();
 
     public ExecuteScript(Client client, CommandBuilder commandBuilder) {
         this.client = client;
         this.commandBuilder = commandBuilder;
+    }
+
+    public void setAuthToken(String authToken) {
+        this.authToken = authToken;
     }
 
     public void execute(String filename) {
@@ -39,6 +42,8 @@ public class ExecuteScript {
 
         executingScripts.add(absolutePath);
         System.out.println("Выполнение скрипта: " + filename);
+
+        commandBuilder.setScriptMode(true);
 
         try (Scanner fileScanner = new Scanner(file)) {
             int lineNumber = 0;
@@ -65,7 +70,7 @@ public class ExecuteScript {
                     return;
                 }
 
-                CommandRequest request = buildRequest(cmdName, cmdArgs);
+                CommandRequest request = commandBuilder.build(cmdName, cmdArgs, authToken);
                 if (request == null) {
                     System.out.println("  Ошибка: неверный формат команды");
                     continue;
@@ -85,32 +90,8 @@ public class ExecuteScript {
         } catch (FileNotFoundException e) {
             System.out.println("Ошибка при чтении файла: " + e.getMessage());
         } finally {
+            commandBuilder.setScriptMode(false);
             executingScripts.remove(absolutePath);
-        }
-    }
-
-    private CommandRequest buildRequest(String cmdName, String cmdArgs) {
-        CommandType type = CommandType.fromString(cmdName);
-        if (type == null) {
-            return null;
-        }
-
-        BiConsumer<CommandRequest.Builder, String> handler = commandBuilder.getHandler(type);
-        if (handler == null) {
-            return null;
-        }
-
-        CommandRequest.Builder builder = new CommandRequest.Builder().type(type);
-
-        try {
-            handler.accept(builder, cmdArgs);
-            return builder.build();
-        } catch (IllegalArgumentException e) {
-            System.out.println("  " + e.getMessage());
-            return null;
-        } catch (Exception e) {
-            System.out.println("  Ошибка: число введено неверно");
-            return null;
         }
     }
 

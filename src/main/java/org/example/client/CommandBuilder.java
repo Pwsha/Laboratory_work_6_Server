@@ -13,39 +13,51 @@ public class CommandBuilder {
     private final Scanner scanner;
     private final HashSet<StudyGroup> emptyCollection = new HashSet<>();
     private final Map<CommandType, BiConsumer<CommandRequest.Builder, String>> handlers = new HashMap<>();
+    private boolean isScriptMode = false;  // флаг режима скрипта
 
     public CommandBuilder(Scanner scanner) {
         this.scanner = scanner;
         initHandlers();
     }
 
+    public void setScriptMode(boolean isScriptMode) {
+        this.isScriptMode = isScriptMode;
+    }
+
     private void initHandlers() {
-        CommandType[] noArgs = {HELP, INFO, SHOW, SHOW_ODD, CLEAR, MIN_BY_SEMESTER_ENUM, HISTORY};
+
+        CommandType[] noArgs = {HELP, INFO, SHOW, CLEAR, MIN_BY_SEMESTER_ENUM, HISTORY};
         for (CommandType type : noArgs) {
             handlers.put(type, (builder, args) -> {});
         }
 
-        BiConsumer<CommandRequest.Builder, String> groupHandler = (builder, args) ->
+        BiConsumer<CommandRequest.Builder, String> groupHandler = (builder, args) -> {
+            if (isScriptMode || (args != null && args.startsWith("{") && args.endsWith("}"))) {
+                String parseInput = args.substring(1, args.length() - 1);
+                builder.studyGroup(GroupParser.parseFromString(parseInput, emptyCollection));
+            }
+            else {
                 builder.studyGroup(StudyGroupReader.read(emptyCollection, scanner));
+            }
+        };
         handlers.put(ADD, groupHandler);
         handlers.put(ADD_IF_MAX, groupHandler);
         handlers.put(REMOVE_GREATER, groupHandler);
 
         handlers.put(UPDATE, (builder, args) -> {
-            if (args.contains("{") && args.contains("}")) {
+            if (isScriptMode || (args != null && args.contains("{") && args.contains("}"))) {
                 String[] updateArgs = args.split("\\s+", 2);
                 if (updateArgs.length < 2) {
                     throw new IllegalArgumentException("Формат: update id {element}");
                 }
                 builder.id(Long.parseLong(updateArgs[0]));
-                StudyGroupReader.setScriptMode(updateArgs[1]);
-                builder.studyGroup(StudyGroupReader.read(emptyCollection, scanner));
+                String updateInput = updateArgs[1].substring(1, updateArgs[1].length() - 1);
+                builder.studyGroup(GroupParser.parseFromString(updateInput, emptyCollection));
             } else {
                 if (args.isEmpty()) {
                     throw new IllegalArgumentException("Формат: update id");
                 }
                 builder.id(Long.parseLong(args));
-                StudyGroupReader.setConsoleMode();
                 System.out.println("Введите новые данные для элемента с id " + Long.parseLong(args) + ":");
                 builder.studyGroup(StudyGroupReader.read(emptyCollection, scanner));
             }
@@ -71,7 +83,7 @@ public class CommandBuilder {
         return handlers.get(type);
     }
 
-    public CommandRequest build(String cmdName, String cmdArgs) {
+    public CommandRequest build(String cmdName, String cmdArgs, String authToken) {
         CommandType type = CommandType.fromString(cmdName);
         if (type == null) {
             System.out.println("Неизвестная команда");
@@ -83,7 +95,9 @@ public class CommandBuilder {
             return null;
         }
 
-        CommandRequest.Builder builder = new CommandRequest.Builder().type(type);
+        CommandRequest.Builder builder = new CommandRequest.Builder()
+                .type(type)
+                .stringArg(authToken);
 
         try {
             handler.accept(builder, cmdArgs);

@@ -16,7 +16,7 @@ public class RemoveGreaterCommand implements Command {
     }
 
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId) {
         StudyGroup reference = request.getStudyGroup();
 
         if (reference == null) {

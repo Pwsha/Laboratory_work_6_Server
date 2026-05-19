@@ -15,7 +15,7 @@ public interface Command {
     /**
      * Метод запуска
      */
-    CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner);
+    CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId);
 
     /**
      * Функция получения значения имени

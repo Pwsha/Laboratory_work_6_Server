@@ -13,7 +13,7 @@ import java.util.Scanner;
  */
 public class ExecuteScriptCommand implements Command {
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner){
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId){
         return CommandResponse.success("Выполнение скрипта");
     }
 

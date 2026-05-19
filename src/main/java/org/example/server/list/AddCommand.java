@@ -7,6 +7,7 @@ import org.example.server.CollectionManager;
 import org.example.client.CommandHelper;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Scanner;
 
 public class AddCommand implements Command {
@@ -17,20 +18,21 @@ public class AddCommand implements Command {
     }
 
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId) {
         StudyGroup group = request.getStudyGroup();
 
         if (group == null) {
             return CommandResponse.error("Не указан элемент для добавления");
         }
 
-        Long newId = CommandHelper.generateId(manager.getCollection());
-        group.setId(newId);
         group.setCreationDate(LocalDateTime.now());
+        boolean success = manager.add(group, userId);
 
-        manager.add(group);
-
-        return CommandResponse.success("Элемент добавлен с id: " + group.getId());
+        if (success) {
+            return CommandResponse.success("Элемент добавлен с id: " + group.getId());
+        } else {
+            return CommandResponse.error("Ошибка при добавлении в БД");
+        }
     }
 
     @Override

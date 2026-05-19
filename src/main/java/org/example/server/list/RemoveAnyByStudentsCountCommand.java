@@ -16,7 +16,7 @@ public class RemoveAnyByStudentsCountCommand implements Command {
     }
 
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId) {
         Long studentsCount = request.getStudentsCount();
 
         if (studentsCount == null) {
@@ -28,7 +28,7 @@ public class RemoveAnyByStudentsCountCommand implements Command {
                 .findFirst();
 
         if (toRemove.isPresent()) {
-            manager.removeById(toRemove.get().getId());
+            manager.removeById(toRemove.get().getId(), userId);
             return CommandResponse.success("Элемент с studentsCount=" + studentsCount + " удалён");
         }
 

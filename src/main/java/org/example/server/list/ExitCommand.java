@@ -18,9 +18,8 @@ public class ExitCommand implements Command {
         this.manager = manager;
     }
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner){
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId){
         System.out.println("Завершение работы...");
-        manager.saveCollection();
         System.exit(0);
         return CommandResponse.success("exit");
     }

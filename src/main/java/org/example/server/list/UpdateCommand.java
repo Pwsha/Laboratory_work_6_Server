@@ -15,7 +15,7 @@ public class UpdateCommand implements Command {
     }
 
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId) {
         Long id = request.getId();
         StudyGroup newGroup = request.getStudyGroup();
 
@@ -32,13 +32,25 @@ public class UpdateCommand implements Command {
             return CommandResponse.error("Элемент с id " + id + " не найден");
         }
 
-        newGroup.setId(id);
-        newGroup.setCreationDate(existing.getCreationDate());
+        StudyGroup updatedGroup = new StudyGroup.Builder()
+                .id(id)
+                .name(newGroup.getName())
+                .coordinates(newGroup.getCoordinates())
+                .creationDate(existing.getCreationDate())
+                .studentsCount(newGroup.getStudentsCount())
+                .expelledStudents(newGroup.getExpelledStudents())
+                .formOfEducation(newGroup.getFormOfEducation())
+                .semesterEnum(newGroup.getSemesterEnum())
+                .groupAdmin(newGroup.getGroupAdmin())
+                .build();
 
-        manager.removeById(id);
-        manager.add(newGroup);
+        boolean success = manager.update(id, updatedGroup, userId);
 
-        return CommandResponse.success("Элемент с id " + id + " обновлён");
+        if (success) {
+            return CommandResponse.success("Элемент с id " + id + " обновлён");
+        } else {
+            return CommandResponse.error("Ошибка при обновлении");
+        }
     }
 
     @Override

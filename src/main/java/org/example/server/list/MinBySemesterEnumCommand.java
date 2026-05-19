@@ -16,7 +16,7 @@ public class MinBySemesterEnumCommand implements Command {
     }
 
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId) {
         return manager.getCollection().stream()
                 .min(Comparator.comparing(StudyGroup::getSemesterEnum))
                 .map(min -> CommandResponse.withGroup("Элемент с минимальным semesterEnum:", min))
