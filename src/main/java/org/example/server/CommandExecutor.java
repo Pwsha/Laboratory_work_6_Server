@@ -8,15 +8,21 @@ import org.example.server.list.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
 
 public class CommandExecutor {
     private final Map<CommandType, Command> commands = new HashMap<>();
     private final CollectionManager manager;
     private final Scanner scanner;
+    private final AuthManager authManager;
+    private final ForkJoinPool forkJoinPool;
 
-    public CommandExecutor(CollectionManager manager, Scanner scanner) {
+    public CommandExecutor(CollectionManager manager, AuthManager authManager, Scanner scanner) {
         this.manager = manager;
+        this.authManager = authManager;
         this.scanner = scanner;
+        this.forkJoinPool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
         initCommands();
     }
 
@@ -40,10 +46,45 @@ public class CommandExecutor {
     }
 
     public CommandResponse execute(CommandRequest request) {
-        Command command = commands.get(request.getType());
+        if (!authManager.isAuthorized(request)) {
+            return CommandResponse.error("Необходимо авторизоваться. Используйте login");
+        }
+
+        CommandType type = request.getType();
+
+        if (type == CommandType.LOGIN) {
+            return authManager.handleLogin(request);
+        }
+        if (type == CommandType.REGISTER) {
+            return authManager.handleRegister(request);
+        }
+        if (type == CommandType.LOGOUT) {
+            return authManager.handleLogout(request);
+        }
+
+        java.util.Optional<Integer> userIdOpt = authManager.getUserId(request);
+        if (userIdOpt.isEmpty()) {
+            return CommandResponse.error("Сессия не найдена. Выполните login");
+        }
+        int userId = userIdOpt.get();
+
+        Command command = commands.get(type);
         if (command == null) {
             return CommandResponse.error("Неизвестная команда");
         }
-        return command.execute(request, manager, scanner);
+
+        ForkJoinTask<CommandResponse> task = forkJoinPool.submit(() ->
+                command.execute(request, manager, scanner, userId)
+        );
+
+        try {
+            return task.get();
+        } catch (Exception e) {
+            return CommandResponse.error("Ошибка выполнения: " + e.getMessage());
+        }
+    }
+
+    public void shutdown() {
+        forkJoinPool.shutdown();
     }
 }

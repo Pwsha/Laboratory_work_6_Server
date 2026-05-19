@@ -17,7 +17,7 @@ public class ShowCommand implements Command {
     }
 
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId) {
         if (manager.getCollection().isEmpty()) {
             return CommandResponse.success("Коллекция пуста");
         }

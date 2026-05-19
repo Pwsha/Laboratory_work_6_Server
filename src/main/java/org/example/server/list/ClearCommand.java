@@ -14,9 +14,9 @@ public class ClearCommand implements Command {
     }
 
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId) {
         int size = manager.getCollection().size();
-        manager.clear();
+        manager.clear(userId);
         return CommandResponse.success("Коллекция очищена. Удалено элементов: " + size);
     }
 

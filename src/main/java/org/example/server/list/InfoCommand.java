@@ -16,7 +16,7 @@ public class InfoCommand implements Command {
     }
 
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId) {
         String info = String.format(
                 "Тип коллекции: %s\nДата инициализации: %s\nКоличество элементов: %d",
                 manager.getCollection().getClass().getSimpleName(),

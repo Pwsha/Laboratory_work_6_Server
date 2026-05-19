@@ -9,7 +9,7 @@ import java.util.Scanner;
 public class HistoryCommand implements Command {
 
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId) {
         return CommandResponse.success("История команд");
     }
 

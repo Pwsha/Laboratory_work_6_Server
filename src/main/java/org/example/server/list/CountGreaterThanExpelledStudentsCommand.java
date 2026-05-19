@@ -14,7 +14,7 @@ public class CountGreaterThanExpelledStudentsCommand implements Command {
     }
 
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId) {
         Integer expelledStudents = request.getExpelledStudents();
 
         if (expelledStudents == null) {
@@ -26,8 +26,7 @@ public class CountGreaterThanExpelledStudentsCommand implements Command {
                 .count();
 
         return CommandResponse.withCount(
-                "Количество элементов с expelledStudents > " + expelledStudents + ": " + count,
-                count);
+                "Количество элементов с expelledStudents > " + expelledStudents + ": ", count);
     }
 
     @Override

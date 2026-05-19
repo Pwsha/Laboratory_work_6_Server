@@ -14,14 +14,14 @@ public class RemoveByIdCommand implements Command {
     }
 
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner) {
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId) {
         Long id = request.getId();
 
         if (id == null) {
             return CommandResponse.error("Не указан id");
         }
 
-        boolean removed = manager.removeById(id);
+        boolean removed = manager.removeById(id, userId);
 
         if (removed) {
             return CommandResponse.success("Элемент с id " + id + " удалён");

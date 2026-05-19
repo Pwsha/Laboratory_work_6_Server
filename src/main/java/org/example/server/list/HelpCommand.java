@@ -21,7 +21,7 @@ public class HelpCommand implements Command {
     }
 
     @Override
-    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner){
+    public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId){
         StringBuilder sb = new StringBuilder("Доступные команды:\n");
         commands.values().stream()
                 .sorted((c1, c2) -> c1.getName().compareTo(c2.getName()))
