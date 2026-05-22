@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 public class StudyGroup implements Comparable<StudyGroup>, Serializable {
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
 
     private Long id;
     private String name;
@@ -16,6 +16,7 @@ public class StudyGroup implements Comparable<StudyGroup>, Serializable {
     private FormOfEducation formOfEducation;
     private Semester semesterEnum;
     private Person groupAdmin;
+    private Integer userId;
 
     public StudyGroup() {}
 
@@ -45,6 +46,9 @@ public class StudyGroup implements Comparable<StudyGroup>, Serializable {
 
     public Person getGroupAdmin() { return groupAdmin; }
     public void setGroupAdmin(Person groupAdmin) { this.groupAdmin = groupAdmin; }
+
+    public Integer getUserId() { return userId; }
+    public void setUserId(Integer userId) { this.userId = userId; }
 
     @Override
     public int compareTo(StudyGroup other) {
@@ -80,6 +84,7 @@ public class StudyGroup implements Comparable<StudyGroup>, Serializable {
         private FormOfEducation formOfEducation;
         private Semester semesterEnum;
         private Person groupAdmin;
+        private Integer userId;
 
         public Builder id(Long id) { this.id = id; return this; }
         public Builder name(String name) { this.name = name; return this; }
@@ -90,6 +95,7 @@ public class StudyGroup implements Comparable<StudyGroup>, Serializable {
         public Builder formOfEducation(FormOfEducation formOfEducation) { this.formOfEducation = formOfEducation; return this; }
         public Builder semesterEnum(Semester semesterEnum) { this.semesterEnum = semesterEnum; return this; }
         public Builder groupAdmin(Person groupAdmin) { this.groupAdmin = groupAdmin; return this; }
+        public Builder userId(Integer userId) { this.userId = userId; return this; }
 
         public StudyGroup build() {
             StudyGroup group = new StudyGroup();
@@ -102,6 +108,7 @@ public class StudyGroup implements Comparable<StudyGroup>, Serializable {
             group.setFormOfEducation(formOfEducation);
             group.setSemesterEnum(semesterEnum);
             group.setGroupAdmin(groupAdmin);
+            group.setUserId(userId);
             return group;
         }
     }

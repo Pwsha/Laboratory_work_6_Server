@@ -4,10 +4,8 @@ import org.example.common.command.CommandRequest;
 import org.example.common.command.CommandResponse;
 import org.example.common.init.StudyGroup;
 import org.example.server.CollectionManager;
-import org.example.client.CommandHelper;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
 import java.util.Scanner;
 
 public class AddCommand implements Command {
@@ -24,8 +22,8 @@ public class AddCommand implements Command {
         if (group == null) {
             return CommandResponse.error("Не указан элемент для добавления");
         }
-
         group.setCreationDate(LocalDateTime.now());
+
         boolean success = manager.add(group, userId);
 
         if (success) {

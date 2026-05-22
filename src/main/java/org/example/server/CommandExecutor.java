@@ -73,6 +73,7 @@ public class CommandExecutor {
             return CommandResponse.error("Неизвестная команда");
         }
 
+
         ForkJoinTask<CommandResponse> task = forkJoinPool.submit(() ->
                 command.execute(request, manager, scanner, userId)
         );

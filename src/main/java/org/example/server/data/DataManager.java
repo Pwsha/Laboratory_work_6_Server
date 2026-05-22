@@ -146,15 +146,9 @@ public class DataManager {
         return groups;
     }
 
+    // В DatabaseManager.java
     public Long addGroup(StudyGroup group, int userId) {
-        String sql = """
-            INSERT INTO study_group (name, coordinates_x, coordinates_y, creation_date, 
-                                     students_count, expelled_students, form_of_education, 
-                                     semester_enum, user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            RETURNING id
-        """;
-
+        String sql = "INSERT INTO study_group (name, coordinates_x, coordinates_y, creation_date, students_count, expelled_students, form_of_education, semester_enum, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, group.getName());
             stmt.setDouble(2, group.getCoordinates().getX());
@@ -164,15 +158,17 @@ public class DataManager {
             stmt.setInt(6, group.getExpelledStudents());
             stmt.setString(7, group.getFormOfEducation().name());
             stmt.setString(8, group.getSemesterEnum().name());
-            stmt.setInt(9, userId);
+            stmt.setInt(9, userId);  // ← УБЕДИТЕСЬ, ЧТО ЭТА СТРОКА ЕСТЬ!
 
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                return rs.getLong(1);
+                Long generatedId = rs.getLong(1);
+                group.setId(generatedId);
+                group.setUserId(userId);
+                return generatedId;
             }
             return null;
         } catch (SQLException e) {
-            System.err.println("Ошибка добавления группы: " + e.getMessage());
             return null;
         }
     }
@@ -195,12 +191,12 @@ public class DataManager {
             stmt.setInt(6, newGroup.getExpelledStudents());
             stmt.setString(7, newGroup.getFormOfEducation().name());
             stmt.setString(8, newGroup.getSemesterEnum().name());
-            stmt.setLong(9, id);
-            stmt.setInt(10, userId);
+            stmt.setInt(9, userId);      // ← обновляем user_id
+            stmt.setLong(10, id);
+            stmt.setInt(11, userId);
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Ошибка обновления группы: " + e.getMessage());
             return false;
         }
     }
@@ -256,6 +252,7 @@ public class DataManager {
                 .expelledStudents(rs.getInt("expelled_students"))
                 .formOfEducation(FormOfEducation.valueOf(rs.getString("form_of_education")))
                 .semesterEnum(Semester.valueOf(rs.getString("semester_enum")))
+                .userId(rs.getInt("user_id"))
                 .build();
     }
 

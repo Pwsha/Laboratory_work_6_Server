@@ -36,13 +36,16 @@ public class Client {
 
     public CommandResponse sendRequest(CommandRequest request) {
         if (!connected) {
-            return CommandResponse.error("Нет подключения к серверу");
+            if (!connect()) {
+                return CommandResponse.error("Нет подключения к серверу");
+            }
         }
 
         try {
             oos.writeObject(request);
             oos.flush();
-            return (CommandResponse) ois.readObject();
+            CommandResponse response = (CommandResponse) ois.readObject();
+            return response;
         } catch (IOException | ClassNotFoundException e) {
             connected = false;
             return CommandResponse.error("Ошибка связи: " + e.getMessage());

@@ -18,17 +18,19 @@ public class ShowCommand implements Command {
 
     @Override
     public CommandResponse execute(CommandRequest request, CollectionManager manager, Scanner scanner, int userId) {
-        if (manager.getCollection().isEmpty()) {
-            return CommandResponse.success("Коллекция пуста");
-        }
-
-        List<StudyGroup> sorted = manager.getCollection().stream()
+        List<StudyGroup> groups = this.manager.getCollection().stream()
+                .filter(g -> g != null && g.getId() != null)  // ← фильтруем null
                 .sorted()
                 .collect(Collectors.toList());
 
-        return CommandResponse.withCollection(
-                "Элементы коллекции (всего: " + sorted.size() + "):",
-                sorted);
+        // Убеждаемся, что id установлен (на всякий случай)
+        for (StudyGroup g : groups) {
+            if (g.getId() == null) {
+                System.err.println("WARNING: StudyGroup with null id detected: " + g.getName());
+            }
+        }
+
+        return CommandResponse.withCollection("Элементы коллекции (всего: " + groups.size() + "):", groups);
     }
 
     @Override

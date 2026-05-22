@@ -32,6 +32,7 @@ public class CollectionManager {
         Long generatedId = dbManager.addGroup(group, userId);
         if (generatedId != null) {
             group.setId(generatedId);
+            group.setUserId(userId);
             synchronized (collection) {
                 collection.add(group);
             }
@@ -41,6 +42,7 @@ public class CollectionManager {
     }
 
     public boolean update(Long id, StudyGroup newGroup, int userId) {
+        newGroup.setUserId(userId);
         if (dbManager.updateGroup(id, newGroup, userId)) {
             synchronized (collection) {
                 collection.removeIf(g -> g.getId().equals(id));
@@ -52,6 +54,22 @@ public class CollectionManager {
     }
 
     public boolean removeById(Long id, int userId) {
+        StudyGroup group = null;
+        synchronized (collection) {
+            group = collection.stream()
+                    .filter(g -> g.getId().equals(id))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        if (group == null) {
+            return false;
+        }
+
+        if (group.getUserId() != null && group.getUserId() != userId) {
+            return false;
+        }
+
         if (dbManager.deleteGroup(id, userId)) {
             synchronized (collection) {
                 collection.removeIf(g -> g.getId().equals(id));

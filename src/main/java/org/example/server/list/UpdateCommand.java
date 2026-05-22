@@ -33,15 +33,16 @@ public class UpdateCommand implements Command {
         }
 
         StudyGroup updatedGroup = new StudyGroup.Builder()
-                .id(id)
+                .id(id)                                    // ← добавляем старый id!
                 .name(newGroup.getName())
                 .coordinates(newGroup.getCoordinates())
-                .creationDate(existing.getCreationDate())
+                .creationDate(existing.getCreationDate())  // ← добавляем старую дату!
                 .studentsCount(newGroup.getStudentsCount())
                 .expelledStudents(newGroup.getExpelledStudents())
                 .formOfEducation(newGroup.getFormOfEducation())
                 .semesterEnum(newGroup.getSemesterEnum())
                 .groupAdmin(newGroup.getGroupAdmin())
+                .userId(userId)
                 .build();
 
         boolean success = manager.update(id, updatedGroup, userId);
