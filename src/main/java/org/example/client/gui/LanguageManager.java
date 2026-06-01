@@ -9,12 +9,14 @@ import java.util.PropertyResourceBundle;
 import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class LanguageManager {
     private static LanguageManager instance;
     private ResourceBundle bundle;
     private Locale currentLocale;
     private final Map<String, Locale> availableLocales;
+    private Consumer<Locale> localeChangeListener;
 
     private LanguageManager() {
         availableLocales = new ConcurrentHashMap<>();
@@ -27,18 +29,29 @@ public class LanguageManager {
     }
 
     public static LanguageManager getInstance() {
-        if (instance == null) instance = new LanguageManager();
+        if (instance == null) {
+            instance = new LanguageManager();
+        }
         return instance;
+    }
+
+    public void addLocaleChangeListener(Consumer<Locale> listener) {
+        this.localeChangeListener = listener;
     }
 
     public void setLocale(Locale locale) {
         this.currentLocale = locale;
         loadBundle();
+        if (localeChangeListener != null) {
+            localeChangeListener.accept(locale);
+        }
     }
 
     public void setLocale(String language) {
         Locale locale = availableLocales.get(language);
-        if (locale != null) setLocale(locale);
+        if (locale != null) {
+            setLocale(locale);
+        }
     }
 
     private void loadBundle() {
@@ -53,12 +66,13 @@ public class LanguageManager {
                 conn.setUseCaches(false);
                 try (InputStreamReader reader = new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8)) {
                     bundle = new PropertyResourceBundle(reader);
+                    System.out.println("DEBUG: Loaded bundle for locale: " + currentLocale);
                 }
             } else {
                 bundle = ResourceBundle.getBundle("i18n/messages", currentLocale);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Error loading bundle: " + e.getMessage());
             bundle = ResourceBundle.getBundle("i18n/messages", currentLocale);
         }
     }
@@ -67,10 +81,16 @@ public class LanguageManager {
         try {
             return bundle.getString(key);
         } catch (Exception e) {
+            System.err.println("Missing key: " + key);
             return key;
         }
     }
 
-    public ResourceBundle getBundle() { return bundle; }
-    public Locale getCurrentLocale() { return currentLocale; }
+    public ResourceBundle getBundle() {
+        return bundle;
+    }
+
+    public Locale getCurrentLocale() {
+        return currentLocale;
+    }
 }

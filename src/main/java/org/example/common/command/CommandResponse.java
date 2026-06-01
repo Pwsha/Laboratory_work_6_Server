@@ -12,7 +12,7 @@ public class CommandResponse implements Serializable {
     private final List<StudyGroup> collection;
     private final StudyGroup group;
     private final Long count;
-    private final Integer userId;  // добавили userId
+    private final Integer userId;
 
     private CommandResponse(Builder builder) {
         this.success = builder.success;

@@ -7,6 +7,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import org.example.client.Client;
+import org.example.client.gui.controller.MainController;
 import org.example.common.command.CommandRequest;
 import org.example.common.command.CommandResponse;
 import org.example.common.command.CommandType;
@@ -20,12 +21,18 @@ public class AuthController {
     private PasswordField passwordField;
     private ComboBox<String> languageSelector;
     private Label errorLabel;
+    private Label titleLabel;
+    private Button loginButton;
+    private Button registerButton;
 
     public AuthController(Stage stage, Client client) {
         this.stage = stage;
         this.client = client;
         this.lang = LanguageManager.getInstance();
         initUI();
+
+        // Подписываемся на изменения языка
+        lang.addLocaleChangeListener(locale -> updateTexts());
     }
 
     private void initUI() {
@@ -34,7 +41,7 @@ public class AuthController {
         root.setAlignment(Pos.CENTER);
         root.setStyle("-fx-background-color: linear-gradient(to bottom, #2b3b4c, #1a2a3a);");
 
-        Label titleLabel = new Label(lang.getString("app.title"));
+        titleLabel = new Label(lang.getString("app.title"));
         titleLabel.setStyle("-fx-font-size: 24px; -fx-text-fill: white; -fx-font-weight: bold;");
 
         HBox langBox = new HBox(10);
@@ -55,12 +62,15 @@ public class AuthController {
         loginField.setPromptText(lang.getString("auth.login"));
         passwordField = new PasswordField();
         passwordField.setPromptText(lang.getString("auth.password"));
-        Button loginButton = new Button(lang.getString("auth.signin"));
+
+        loginButton = new Button(lang.getString("auth.signin"));
         loginButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
         loginButton.setOnAction(e -> handleLogin());
-        Button registerButton = new Button(lang.getString("auth.register"));
+
+        registerButton = new Button(lang.getString("auth.register"));
         registerButton.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white;");
         registerButton.setOnAction(e -> handleRegister());
+
         errorLabel = new Label();
         errorLabel.setStyle("-fx-text-fill: #f44336;");
         errorLabel.setVisible(false);
@@ -73,20 +83,27 @@ public class AuthController {
         stage.show();
     }
 
+    private void updateTexts() {
+        titleLabel.setText(lang.getString("app.title"));
+        loginField.setPromptText(lang.getString("auth.login"));
+        passwordField.setPromptText(lang.getString("auth.password"));
+        loginButton.setText(lang.getString("auth.signin"));
+        registerButton.setText(lang.getString("auth.register"));
+        stage.setTitle(lang.getString("app.title"));
+    }
+
     private void changeLanguage() {
         String selected = languageSelector.getValue();
         if (selected.contains("English")) lang.setLocale("en_AU");
         else if (selected.contains("Nederlands")) lang.setLocale("nl");
         else if (selected.contains("Svenska")) lang.setLocale("sv");
         else lang.setLocale("ru");
-
-        loginField.setPromptText(lang.getString("auth.login"));
-        passwordField.setPromptText(lang.getString("auth.password"));
     }
 
     private void handleLogin() {
         String login = loginField.getText().trim();
         String password = passwordField.getText().trim();
+
         if (login.isEmpty() || password.isEmpty()) {
             errorLabel.setText(lang.getString("auth.error.empty"));
             errorLabel.setVisible(true);
@@ -105,24 +122,29 @@ public class AuthController {
             return;
         }
 
-
         CommandResponse response = client.sendRequest(request);
 
         if (response.isSuccess()) {
-            String token = response.getMessage().contains("Ваш токен:")
-                    ? response.getMessage().substring(response.getMessage().indexOf("Ваш токен:") + 11).trim()
-                    : null;
+            String msg = response.getMessage();
+            String token = null;
+            if (msg.contains("Ваш токен:")) {
+                token = msg.substring(msg.indexOf("Ваш токен:") + 11).trim();
+            }
+
             if (token != null) {
                 Integer userId = response.getUserId();
-                if (userId == null) userId = 1;
+                if (userId == null || userId == 0) {
+                    userId = 1;
+                }
 
                 if (mainController != null) {
-                    mainController.switchUser(token, login, userId);
-                    stage.setTitle(lang.getString("app.title") + " - " + login);
-                } else {
-                    mainController = new MainController(stage, client, token, login, userId);
-                    mainController.show();
+                    mainController.close();
                 }
+                mainController = new MainController(stage, client, token, login, userId);
+                mainController.show();
+            } else {
+                errorLabel.setText(lang.getString("auth.error.invalid"));
+                errorLabel.setVisible(true);
             }
         } else {
             errorLabel.setText(lang.getString("auth.error.invalid"));
@@ -133,6 +155,7 @@ public class AuthController {
     private void handleRegister() {
         String login = loginField.getText().trim();
         String password = passwordField.getText().trim();
+
         if (login.isEmpty() || password.isEmpty()) {
             errorLabel.setText(lang.getString("auth.error.empty"));
             errorLabel.setVisible(true);

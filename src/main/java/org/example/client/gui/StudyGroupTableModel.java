@@ -1,7 +1,8 @@
 package org.example.client.gui;
 
 import javafx.beans.property.*;
-import org.example.common.init.*;
+import org.example.common.init.StudyGroup;
+
 import java.time.LocalDateTime;
 
 public class StudyGroupTableModel {
@@ -17,18 +18,18 @@ public class StudyGroupTableModel {
     private final IntegerProperty userId = new SimpleIntegerProperty();
     private final IntegerProperty currentUserId = new SimpleIntegerProperty();
 
-    public StudyGroupTableModel(StudyGroup group, int currentUserId) {
-        this.id.set(group.getId() != null ? group.getId() : 0);
-        this.name.set(group.getName() != null ? group.getName() : "");
-        this.x.set(group.getCoordinates() != null ? group.getCoordinates().getX() : 0f);
-        this.y.set(group.getCoordinates() != null ? group.getCoordinates().getY() : 0L);
-        this.creationDate.set(group.getCreationDate() != null ? group.getCreationDate() : LocalDateTime.now());
-        this.studentsCount.set(group.getStudentsCount());
-        this.expelledStudents.set(group.getExpelledStudents());
-        this.formOfEducation.set(group.getFormOfEducation() != null ? group.getFormOfEducation().name() : "");
-        this.semesterEnum.set(group.getSemesterEnum() != null ? group.getSemesterEnum().name() : "");
-        this.userId.set(group.getUserId() != null ? group.getUserId() : 0);
-        this.currentUserId.set(currentUserId);
+    private StudyGroupTableModel(Builder builder) {
+        this.id.set(builder.id);
+        this.name.set(builder.name);
+        this.x.set(builder.x);
+        this.y.set(builder.y);
+        this.creationDate.set(builder.creationDate);
+        this.studentsCount.set(builder.studentsCount);
+        this.expelledStudents.set(builder.expelledStudents);
+        this.formOfEducation.set(builder.formOfEducation);
+        this.semesterEnum.set(builder.semesterEnum);
+        this.userId.set(builder.userId);
+        this.currentUserId.set(builder.currentUserId);
     }
 
     public long getId() { return id.get(); }
@@ -63,11 +64,57 @@ public class StudyGroupTableModel {
 
     public boolean isOwnedByCurrentUser() {
         boolean result = userId.get() == currentUserId.get();
-        System.out.println("DEBUG isOwned: userId=" + userId.get() + ", currentUserId=" + currentUserId.get() + ", result=" + result);
         return result;
     }
 
     public static StudyGroupTableModel from(StudyGroup group, int currentUserId) {
-        return new StudyGroupTableModel(group, currentUserId);
+        Integer groupUserId = group.getUserId();
+        if (groupUserId == null) {
+            groupUserId = 0;
+        }
+
+        return new Builder()
+                .id(group.getId() != null ? group.getId() : 0)
+                .name(group.getName() != null ? group.getName() : "")
+                .x(group.getCoordinates() != null ? group.getCoordinates().getX() : 0f)
+                .y(group.getCoordinates() != null ? group.getCoordinates().getY() : 0L)
+                .creationDate(group.getCreationDate() != null ? group.getCreationDate() : LocalDateTime.now())
+                .studentsCount(group.getStudentsCount())
+                .expelledStudents(group.getExpelledStudents())
+                .formOfEducation(group.getFormOfEducation() != null ? group.getFormOfEducation().name() : "")
+                .semesterEnum(group.getSemesterEnum() != null ? group.getSemesterEnum().name() : "")
+                .userId(groupUserId)
+                .currentUserId(currentUserId)
+                .build();
+    }
+
+    public static class Builder {
+        private long id;
+        private String name;
+        private float x;
+        private long y;
+        private LocalDateTime creationDate;
+        private long studentsCount;
+        private int expelledStudents;
+        private String formOfEducation;
+        private String semesterEnum;
+        private int userId;
+        private int currentUserId;
+
+        public Builder id(long id) { this.id = id; return this; }
+        public Builder name(String name) { this.name = name; return this; }
+        public Builder x(float x) { this.x = x; return this; }
+        public Builder y(long y) { this.y = y; return this; }
+        public Builder creationDate(LocalDateTime creationDate) { this.creationDate = creationDate; return this; }
+        public Builder studentsCount(long studentsCount) { this.studentsCount = studentsCount; return this; }
+        public Builder expelledStudents(int expelledStudents) { this.expelledStudents = expelledStudents; return this; }
+        public Builder formOfEducation(String formOfEducation) { this.formOfEducation = formOfEducation; return this; }
+        public Builder semesterEnum(String semesterEnum) { this.semesterEnum = semesterEnum; return this; }
+        public Builder userId(int userId) { this.userId = userId; return this; }
+        public Builder currentUserId(int currentUserId) { this.currentUserId = currentUserId; return this; }
+
+        public StudyGroupTableModel build() {
+            return new StudyGroupTableModel(this);
+        }
     }
 }

@@ -36,9 +36,7 @@ public class Client {
 
     public CommandResponse sendRequest(CommandRequest request) {
         if (!connected) {
-            if (!connect()) {
-                return CommandResponse.error("Нет подключения к серверу");
-            }
+            return CommandResponse.error("Нет подключения к серверу");
         }
 
         try {

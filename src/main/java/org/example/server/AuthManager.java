@@ -4,6 +4,7 @@ import org.example.common.command.CommandRequest;
 import org.example.common.command.CommandResponse;
 import org.example.common.command.CommandType;
 import org.example.server.data.DataManager;
+import org.example.server.PasswordHasher;
 
 import java.util.Optional;
 
@@ -21,18 +22,24 @@ public class AuthManager {
         String password = request.getPassword();
 
         if (login == null || password == null || login.isEmpty() || password.isEmpty()) {
-            return CommandResponse.error("Ошибка: логин и пароль обязательны");
+            return CommandResponse.error("Логин и пароль обязательны");
         }
 
         String hashedPassword = PasswordHasher.hash(password);
-        Optional<Integer> userId = dbManager.authenticate(login, hashedPassword);
+        Optional<Integer> userIdOpt = dbManager.authenticate(login, hashedPassword);
 
-        if (userId.isPresent()) {
-            String token = sessionManager.createSession(userId.get());
-            return CommandResponse.success("Успешный вход. Ваш токен: " + token);
-        } else {
-            return CommandResponse.error("Неверный логин или пароль");
+        if (userIdOpt.isPresent()) {
+            int userId = userIdOpt.get();
+            String token = sessionManager.createSession(userId);
+
+            return CommandResponse.builder()
+                    .success(true)
+                    .message("Успешный вход. Ваш токен: " + token)
+                    .userId(userId)
+                    .build();
         }
+
+        return CommandResponse.error("Неверный логин или пароль");
     }
 
     public CommandResponse handleRegister(CommandRequest request) {
@@ -40,7 +47,7 @@ public class AuthManager {
         String password = request.getPassword();
 
         if (login == null || password == null || login.isEmpty() || password.isEmpty()) {
-            return CommandResponse.error("Ошибка: логин и пароль обязательны");
+            return CommandResponse.error("Логин и пароль обязательны");
         }
 
         String hashedPassword = PasswordHasher.hash(password);
@@ -48,22 +55,22 @@ public class AuthManager {
 
         if (success) {
             return CommandResponse.success("Регистрация успешна. Теперь войдите (login)");
-        } else {
-            return CommandResponse.error("Пользователь с таким логином уже существует");
         }
+
+        return CommandResponse.error("Пользователь с таким логином уже существует");
     }
 
     public CommandResponse handleLogout(CommandRequest request) {
         String token = request.getStringArg();
         if (token != null && !token.isEmpty()) {
             sessionManager.removeSession(token);
-            return CommandResponse.success("Выход выполнен успешно");
         }
-        return CommandResponse.error("Не указан токен");
+        return CommandResponse.success("Выход выполнен");
     }
 
     public boolean isAuthorized(CommandRequest request) {
         CommandType type = request.getType();
+
         if (type == CommandType.LOGIN || type == CommandType.REGISTER || type == CommandType.LOGOUT) {
             return true;
         }
@@ -74,6 +81,10 @@ public class AuthManager {
 
     public Optional<Integer> getUserId(CommandRequest request) {
         String token = request.getStringArg();
+        return sessionManager.getUserId(token);
+    }
+
+    public Optional<Integer> getUserIdFromToken(String token) {
         return sessionManager.getUserId(token);
     }
 }

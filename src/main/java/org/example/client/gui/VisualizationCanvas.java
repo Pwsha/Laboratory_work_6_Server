@@ -20,28 +20,18 @@ public class VisualizationCanvas extends Canvas {
     private final Map<Long, VisualObject> visualObjects = new ConcurrentHashMap<>();
     private Consumer<StudyGroup> onObjectClick;
     private Consumer<StudyGroup> onObjectDoubleClick;
+    private final LanguageManager lang;
 
+    // Автоматическое определение границ
     private double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
     private double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
-    private double padding = 50; // отступы от краёв
 
     public VisualizationCanvas(double width, double height) {
         super(width, height);
+        this.lang = LanguageManager.getInstance();
         setOnMouseClicked(this::handleMouseClick);
         widthProperty().addListener((obs, old, newVal) -> redraw());
         heightProperty().addListener((obs, old, newVal) -> redraw());
-    }
-
-    public void updateColors(int currentUserId) {
-        for (VisualObject vo : visualObjects.values()) {
-            Integer groupUserId = vo.group.getUserId();
-            if (groupUserId != null && groupUserId == currentUserId) {
-                vo.color = Color.GREEN;
-            } else {
-                vo.color = Color.RED;
-            }
-        }
-        redraw();
     }
 
     public void updateObjects(List<StudyGroup> groups, int currentUserId) {
@@ -53,8 +43,8 @@ public class VisualizationCanvas extends Canvas {
             currentIds.add(group.getId());
             VisualObject vo = visualObjects.get(group.getId());
             if (vo == null) {
-                Color color = (group.getUserId() != null && group.getUserId() == currentUserId) ? Color.RED : Color.GREEN;
-                vo = VisualObject.builder()
+                Color color = (group.getUserId() != null && group.getUserId() == currentUserId) ? Color.GREEN : Color.RED;
+                vo = new VisualObject.Builder()
                         .id(group.getId())
                         .x(group.getCoordinates().getX())
                         .y(group.getCoordinates().getY())
@@ -77,24 +67,17 @@ public class VisualizationCanvas extends Canvas {
                 toRemove.add(id);
             }
         }
-
         redraw();
     }
 
     private void calculateBounds(List<StudyGroup> groups) {
         if (groups == null || groups.isEmpty()) {
-            // Значения по умолчанию, если нет объектов
-            minX = 0;
-            maxX = 1000;
-            minY = 0;
-            maxY = 800;
+            minX = 0; maxX = 1000; minY = 0; maxY = 800;
             return;
         }
 
-        minX = Double.MAX_VALUE;
-        maxX = -Double.MAX_VALUE;
-        minY = Double.MAX_VALUE;
-        maxY = -Double.MAX_VALUE;
+        minX = Double.MAX_VALUE; maxX = -Double.MAX_VALUE;
+        minY = Double.MAX_VALUE; maxY = -Double.MAX_VALUE;
 
         for (StudyGroup group : groups) {
             if (group == null) continue;
@@ -108,30 +91,17 @@ public class VisualizationCanvas extends Canvas {
 
         double xRange = maxX - minX;
         double yRange = maxY - minY;
+        minX -= xRange * 0.1; maxX += xRange * 0.1;
+        minY -= yRange * 0.1; maxY += yRange * 0.1;
 
-        if (xRange < 100) {
-            minX -= 50;
-            maxX += 50;
-        } else {
-            minX -= xRange * 0.1;
-            maxX += xRange * 0.1;
-        }
-
-        if (yRange < 100) {
-            minY -= 50;
-            maxY += 50;
-        } else {
-            minY -= yRange * 0.1;
-            maxY += yRange * 0.1;
-        }
+        if (minX == maxX) { minX -= 50; maxX += 50; }
+        if (minY == maxY) { minY -= 50; maxY += 50; }
     }
 
     private void redraw() {
         GraphicsContext gc = getGraphicsContext2D();
         gc.clearRect(0, 0, getWidth(), getHeight());
-
         drawGrid(gc);
-
         for (VisualObject vo : visualObjects.values()) {
             vo.draw(gc, minX, maxX, minY, maxY, getWidth(), getHeight());
         }
@@ -141,25 +111,30 @@ public class VisualizationCanvas extends Canvas {
         gc.setStroke(Color.LIGHTGRAY);
         gc.setLineWidth(0.5);
 
+        // Вертикальные линии и подписи
         double stepX = (maxX - minX) / 10;
         for (int i = 0; i <= 10; i++) {
             double x = minX + i * stepX;
             double canvasX = (x - minX) / (maxX - minX) * getWidth();
             gc.strokeLine(canvasX, 0, canvasX, getHeight());
-
             gc.setFill(Color.GRAY);
             gc.fillText(String.format("%.0f", x), canvasX - 15, getHeight() - 10);
         }
 
+        // Горизонтальные линии и подписи
         double stepY = (maxY - minY) / 10;
         for (int i = 0; i <= 10; i++) {
             double y = minY + i * stepY;
             double canvasY = getHeight() - (y - minY) / (maxY - minY) * getHeight();
             gc.strokeLine(0, canvasY, getWidth(), canvasY);
-
             gc.setFill(Color.GRAY);
             gc.fillText(String.format("%.0f", y), 5, canvasY - 5);
         }
+
+        // Заголовки осей
+        gc.setFill(Color.DARKGRAY);
+        gc.fillText("X", getWidth() - 15, getHeight() - 5);
+        gc.fillText("Y", 10, 15);
     }
 
     private void handleMouseClick(MouseEvent e) {
@@ -182,19 +157,12 @@ public class VisualizationCanvas extends Canvas {
         }
     }
 
-    public void setOnObjectClick(Consumer<StudyGroup> callback) {
-        this.onObjectClick = callback;
-    }
-
-    public void setOnObjectDoubleClick(Consumer<StudyGroup> callback) {
-        this.onObjectDoubleClick = callback;
-    }
+    public void setOnObjectClick(Consumer<StudyGroup> callback) { this.onObjectClick = callback; }
+    public void setOnObjectDoubleClick(Consumer<StudyGroup> callback) { this.onObjectDoubleClick = callback; }
 
     private static class VisualObject {
         private final Long id;
-        private double x;
-        private double y;
-        private double studentsCount;
+        private double x, y, studentsCount;
         private Color color;
         private StudyGroup group;
         private double scale = 1.0;
@@ -237,13 +205,11 @@ public class VisualizationCanvas extends Canvas {
             gc.setFill(Color.WHITE);
             gc.setFont(javafx.scene.text.Font.font("Arial", Math.max(10, size / 3)));
             gc.fillText(String.valueOf(id), canvasX - size / 3, canvasY + 5);
-
             gc.restore();
         }
 
         void playAppearAnimation(VisualizationCanvas canvas) {
-            scale = 0;
-            opacity = 0;
+            scale = 0; opacity = 0;
             Timeline timeline = new Timeline(
                     new KeyFrame(Duration.ZERO, e -> { scale = 0; opacity = 0; canvas.redraw(); }),
                     new KeyFrame(Duration.millis(500), e -> { scale = 1; opacity = 1; canvas.redraw(); })
@@ -263,7 +229,7 @@ public class VisualizationCanvas extends Canvas {
         static Builder builder() { return new Builder(); }
 
         static class Builder {
-            private Long id; private double x; private double y; private double studentsCount; private Color color; private StudyGroup group;
+            private Long id; private double x, y, studentsCount; private Color color; private StudyGroup group;
             Builder id(Long id) { this.id = id; return this; }
             Builder x(double x) { this.x = x; return this; }
             Builder y(double y) { this.y = y; return this; }

@@ -122,11 +122,14 @@ public class DataManager {
             stmt.setString(2, hashedPassword);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                return Optional.of(rs.getInt("id"));
+                int userId = rs.getInt("id");
+                System.out.println("DEBUG: Found userId=" + userId + " for login=" + login);
+                return Optional.of(userId);
             }
+            System.out.println("DEBUG: No user found for login=" + login);
             return Optional.empty();
         } catch (SQLException e) {
-            System.err.println("Ошибка аутентификации: " + e.getMessage());
+            System.err.println("Auth error: " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -174,13 +177,7 @@ public class DataManager {
     }
 
     public boolean updateGroup(Long id, StudyGroup newGroup, int userId) {
-        String sql = """
-            UPDATE study_group 
-            SET name = ?, coordinates_x = ?, coordinates_y = ?, creation_date = ?,
-                students_count = ?, expelled_students = ?, form_of_education = ?,
-                semester_enum = ?
-            WHERE id = ? AND user_id = ?
-        """;
+        String sql = "UPDATE study_group SET name=?, coordinates_x=?, coordinates_y=?, creation_date=?, students_count=?, expelled_students=?, form_of_education=?, semester_enum=?, user_id=? WHERE id=?";
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, newGroup.getName());
@@ -191,12 +188,14 @@ public class DataManager {
             stmt.setInt(6, newGroup.getExpelledStudents());
             stmt.setString(7, newGroup.getFormOfEducation().name());
             stmt.setString(8, newGroup.getSemesterEnum().name());
-            stmt.setInt(9, userId);      // ← обновляем user_id
+            stmt.setInt(9, userId);
             stmt.setLong(10, id);
-            stmt.setInt(11, userId);
 
-            return stmt.executeUpdate() > 0;
+            int rows = stmt.executeUpdate();
+            return rows > 0;
         } catch (SQLException e) {
+            System.err.println("SQL Error: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }

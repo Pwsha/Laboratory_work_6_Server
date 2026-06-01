@@ -1,12 +1,13 @@
 package org.example.server;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class SessionManager {
-    private final Map<String, Integer> sessions = new ConcurrentHashMap<>();  // token -> userId
-    private final Map<Integer, String> userTokens = new ConcurrentHashMap<>(); // userId -> token
+    private final Map<String, Integer> sessions = new ConcurrentHashMap<>();
+    private final Map<Integer, String> userTokens = new ConcurrentHashMap<>();
 
     public String createSession(int userId) {
         if (userTokens.containsKey(userId)) {
@@ -32,6 +33,13 @@ public class SessionManager {
         if (userId != null) {
             userTokens.remove(userId);
         }
+    }
+
+    public Optional<Integer> getUserIdFromToken(String token) {
+        if (token == null || token.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(sessions.get(token));
     }
 
     public boolean isAuthenticated(String token) {
