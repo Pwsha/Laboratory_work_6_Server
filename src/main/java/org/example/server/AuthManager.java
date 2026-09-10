@@ -4,7 +4,6 @@ import org.example.common.command.CommandRequest;
 import org.example.common.command.CommandResponse;
 import org.example.common.command.CommandType;
 import org.example.server.data.DataManager;
-import org.example.server.PasswordHasher;
 
 import java.util.Optional;
 

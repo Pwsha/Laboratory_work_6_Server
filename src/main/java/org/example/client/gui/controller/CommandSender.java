@@ -55,6 +55,19 @@ public class CommandSender {
         return send(CommandType.REMOVE_BY_ID, id);
     }
 
+    public CommandResponse sendRemoveByStudentsCount(Long count) {
+        CommandRequest request = new CommandRequest.Builder()
+                .type(CommandType.REMOVE_ANY_BY_STUDENTS_COUNT)
+                .stringArg(authToken)
+                .studentsCount(count)
+                .build();
+        return client.sendRequest(request);
+    }
+
+    public CommandResponse sendCountGreater(Integer value) {
+        return send(CommandType.COUNT_GREATER_THAN_EXPELLED_STUDENTS, value);
+    }
+
     public CommandResponse sendLogout() {
         return send(CommandType.LOGOUT);
     }

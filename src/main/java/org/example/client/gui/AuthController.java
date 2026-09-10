@@ -31,7 +31,6 @@ public class AuthController {
         this.lang = LanguageManager.getInstance();
         initUI();
 
-        // Подписываемся на изменения языка
         lang.addLocaleChangeListener(locale -> updateTexts());
     }
 

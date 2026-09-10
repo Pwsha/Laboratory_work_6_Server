@@ -99,7 +99,7 @@ public class DataManager {
             stmt.execute(createSequence);
             stmt.execute(createUsersTable);
             stmt.execute(createStudyGroupTable);
-            System.out.println("📋 Таблицы инициализированы");
+            System.out.println("Таблицы инициализированы");
         }
     }
 
@@ -213,13 +213,27 @@ public class DataManager {
     }
 
     public boolean clearGroups(int userId) {
+        String countSql = "SELECT COUNT(*) FROM study_group WHERE user_id = ?";
+        try (PreparedStatement countStmt = connection.prepareStatement(countSql)) {
+            countStmt.setInt(1, userId);
+            ResultSet rs = countStmt.executeQuery();
+            if (rs.next()) {
+                int count = rs.getInt(1);
+                if (count == 0) {
+                    return true;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Ошибка при подсчёте: " + e.getMessage());
+        }
+
         String sql = "DELETE FROM study_group WHERE user_id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, userId);
-            stmt.executeUpdate();
-            return true;
+            int rows = stmt.executeUpdate();
+            return rows >= 0;
         } catch (SQLException e) {
-            System.err.println("Ошибка очистки групп: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }

@@ -3,9 +3,7 @@ package org.example.server;
 import org.example.common.init.StudyGroup;
 import org.example.server.data.DataManager;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class CollectionManager {
     private final Set<StudyGroup> collection = Collections.synchronizedSet(new HashSet<>());
@@ -80,13 +78,22 @@ public class CollectionManager {
     }
 
     public boolean clear(int userId) {
-        if (dbManager.clearGroups(userId)) {
-            synchronized (collection) {
-                collection.removeIf(g -> {
-                    return true;
-                });
+        List<Long> idsToRemove = new ArrayList<>();
+        synchronized (collection) {
+            for (StudyGroup g : collection) {
+                if (g.getUserId() != null && g.getUserId() == userId) {
+                    idsToRemove.add(g.getId());
+                }
             }
-            refreshFromDatabase();
+        }
+        boolean dbSuccess = dbManager.clearGroups(userId);
+
+        if (dbSuccess) {
+            synchronized (collection) {
+                int before = collection.size();
+                collection.removeIf(g -> g.getUserId() != null && g.getUserId() == userId);
+                int after = collection.size();
+            }
             return true;
         }
         return false;

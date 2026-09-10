@@ -21,7 +21,6 @@ public class RemoveByIdCommand implements Command {
             return CommandResponse.error("Не указан id");
         }
 
-        // Проверяем, существует ли объект и принадлежит ли пользователю
         StudyGroup group = manager.getCollection().stream()
                 .filter(g -> g.getId().equals(id))
                 .findFirst()

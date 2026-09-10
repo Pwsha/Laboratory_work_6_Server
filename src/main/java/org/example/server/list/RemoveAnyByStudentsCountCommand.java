@@ -20,25 +20,30 @@ public class RemoveAnyByStudentsCountCommand implements Command {
         Long studentsCount = request.getStudentsCount();
 
         if (studentsCount == null) {
-            return CommandResponse.error("Не указано количество студентов");
+            return CommandResponse.error("Students count not specified");
         }
 
         Optional<StudyGroup> toRemove = manager.getCollection().stream()
-                .filter(g -> g.getStudentsCount() == studentsCount)
+                .filter(g -> g.getStudentsCount() == studentsCount && g.getUserId() == userId)
                 .findFirst();
 
         if (toRemove.isPresent()) {
-            manager.removeById(toRemove.get().getId(), userId);
-            return CommandResponse.success("Элемент с studentsCount=" + studentsCount + " удалён");
+            Long id = toRemove.get().getId();
+            boolean success = manager.removeById(id, userId);
+            if (success) {
+                return CommandResponse.success("Element with studentsCount " + studentsCount + " removed");
+            } else {
+                return CommandResponse.error("Database error");
+            }
+        } else {
+            return CommandResponse.error("Element with studentsCount " + studentsCount + " not found");
         }
-
-        return CommandResponse.error("Элемент с studentsCount=" + studentsCount + " не найден");
     }
 
     @Override
     public String getName() { return "remove_any_by_students_count"; }
     @Override
-    public String getDescription() { return "удалить элемент по studentsCount"; }
+    public String getDescription() { return "удалить элемент по количеству студентов"; }
     @Override
     public String getSyntax() { return "remove_any_by_students_count studentsCount"; }
 }

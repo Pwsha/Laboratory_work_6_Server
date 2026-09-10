@@ -7,11 +7,18 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import javafx.util.StringConverter;
 import org.example.client.Client;
+import org.example.client.CommandBuilder;
+import org.example.client.ExecuteScript;
 import org.example.client.gui.*;
 import org.example.common.command.CommandResponse;
 import org.example.common.command.CommandType;
 import org.example.common.init.StudyGroup;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Scanner;
 
 public class MainController {
     private final Stage stage;
@@ -21,6 +28,8 @@ public class MainController {
     private final TableManager tableManager;
     private final DialogManager dialogManager;
     private final VisualizationCanvas visualizationCanvas;
+    private final CommandBuilder commandBuilder;  // нужен для ExecuteScript
+    private ExecuteScript executeScript;          // для выполнения скриптов
 
     private String authToken;
     private String username;
@@ -29,8 +38,7 @@ public class MainController {
     private Label userLabel;
     private ComboBox<String> languageSelector;
 
-    // Ссылки на кнопки для обновления текста
-    private Button refreshBtn, addBtn, editBtn, deleteBtn, infoBtn, clearBtn;
+    private Button refreshBtn, addBtn, editBtn, deleteBtn, infoBtn, clearBtn, scriptBtn;
     private Button addIfMaxBtn, removeGreaterBtn, removeByStudentsBtn, minBySemesterBtn, countGreaterBtn, logoutBtn;
 
     public MainController(Stage stage, Client client, String authToken, String username, int currentUserId) {
@@ -41,10 +49,14 @@ public class MainController {
         this.currentUserId = currentUserId;
         this.lang = LanguageManager.getInstance();
 
+        this.commandBuilder = new CommandBuilder(new Scanner(System.in));
         this.commandSender = new CommandSender(client, authToken);
         this.tableManager = new TableManager(lang);
         this.visualizationCanvas = new VisualizationCanvas(500, 500);
         this.dialogManager = new DialogManager(lang, commandSender, tableManager, visualizationCanvas, this::refreshTable);
+
+        this.executeScript = new ExecuteScript(client, commandBuilder);
+        this.executeScript.setAuthToken(authToken);
 
         visualizationCanvas.setOnObjectClick(this::showObjectInfo);
         visualizationCanvas.setOnObjectDoubleClick(group -> {
@@ -97,6 +109,8 @@ public class MainController {
         editBtn = createButtonWithAnimation("main.edit", e -> dialogManager.showEditDialog());
         deleteBtn = createStyledButtonWithAnimation("main.delete", "#f44336", e -> dialogManager.showDeleteDialog());
 
+        scriptBtn = createStyledButtonWithAnimation("cmd.execute_script", "#9C27B0", e -> showExecuteScriptDialog());
+
         infoBtn = createButtonWithAnimation("cmd.info", e -> sendInfoCommand());
         clearBtn = createButtonWithAnimation("cmd.clear", e -> sendClearCommand());
         addIfMaxBtn = createButtonWithAnimation("cmd.add_if_max", e -> dialogManager.showAddIfMaxDialog());
@@ -107,10 +121,7 @@ public class MainController {
 
         logoutBtn = createButtonWithAnimation("main.logout", e -> logout());
 
-        languageSelector = new ComboBox<>();
-        languageSelector.getItems().addAll("Русский", "English (AU)", "Nederlands", "Svenska");
-        languageSelector.setValue("Русский");
-        languageSelector.setOnAction(e -> changeLanguage());
+        languageSelector = createLanguageSelector();
 
         Region spacer1 = new Region();
         Region spacer2 = new Region();
@@ -119,11 +130,24 @@ public class MainController {
 
         toolbar.getItems().addAll(
                 userLabel, refreshBtn, addBtn, editBtn, deleteBtn,
-                spacer1, infoBtn, clearBtn, addIfMaxBtn, removeGreaterBtn,
+                spacer1, scriptBtn, infoBtn, clearBtn, addIfMaxBtn, removeGreaterBtn,
                 removeByStudentsBtn, minBySemesterBtn, countGreaterBtn,
                 spacer2, languageSelector, logoutBtn
         );
         return toolbar;
+    }
+
+    private void showExecuteScriptDialog() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle(lang.getString("cmd.execute_script"));
+        dialog.setHeaderText(lang.getString("dialog.execute_script.header"));
+        dialog.setContentText(lang.getString("dialog.execute_script.content"));
+
+        dialog.showAndWait().ifPresent(filename -> {
+            executeScript.setAuthToken(authToken);
+            executeScript.execute(filename);
+            refreshTable();
+        });
     }
 
     private Button createButtonWithAnimation(String key, javafx.event.EventHandler<javafx.event.ActionEvent> handler) {
@@ -141,6 +165,14 @@ public class MainController {
         return btn;
     }
 
+    private ComboBox<String> createLanguageSelector() {
+        languageSelector = new ComboBox<>();
+        languageSelector.getItems().addAll("Русский", "English (AU)", "Nederlands", "Svenska");
+        languageSelector.setValue("Русский");
+        languageSelector.setOnAction(e -> changeLanguage());
+        return languageSelector;
+    }
+
     private SplitPane createCenterPane() {
         SplitPane splitPane = new SplitPane();
         splitPane.setDividerPositions(0.6);
@@ -156,6 +188,15 @@ public class MainController {
         Label titleLabel = new Label(lang.getString("visualization.title"));
         titleLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16px;");
 
+        HBox legendBox = createLegendBox();
+
+        vizBox.getChildren().addAll(titleLabel, legendBox, visualizationCanvas);
+
+        splitPane.getItems().addAll(tableBox, vizBox);
+        return splitPane;
+    }
+
+    private HBox createLegendBox() {
         HBox legendBox = new HBox(20);
         legendBox.setAlignment(javafx.geometry.Pos.CENTER);
 
@@ -172,19 +213,45 @@ public class MainController {
         otherBox.getChildren().addAll(redCircle, otherLabel);
 
         legendBox.getChildren().addAll(ownBox, otherBox);
+        return legendBox;
+    }
 
-        vizBox.getChildren().addAll(titleLabel, legendBox, visualizationCanvas);
+    private void updateLegendBox() {
+        BorderPane root = (BorderPane) stage.getScene().getRoot();
+        SplitPane splitPane = (SplitPane) root.getCenter();
+        VBox vizBox = (VBox) splitPane.getItems().get(1);
 
-        splitPane.getItems().addAll(tableBox, vizBox);
-        return splitPane;
+        if (vizBox.getChildren().size() > 1) {
+            vizBox.getChildren().remove(1);
+        }
+        vizBox.getChildren().add(1, createLegendBox());
     }
 
     private HBox createFilterPanel() {
         HBox filterBox = new HBox(10);
+        Map<String, String> columnNames = Map.of(
+                "id", lang.getString("table.id"),
+                "name", lang.getString("table.name"),
+                "x", "X",
+                "y", "Y",
+                "creationDate", lang.getString("table.creationDate"),
+                "studentsCount", lang.getString("table.studentsCount"),
+                "expelledStudents", lang.getString("table.expelledStudents"),
+                "formOfEducation", lang.getString("table.formOfEducation"),
+                "semesterEnum", lang.getString("table.semester")
+        );
 
         ComboBox<String> filterCombo = new ComboBox<>();
-        filterCombo.getItems().addAll("ID", lang.getString("table.name"), lang.getString("table.studentsCount"));
-        filterCombo.setValue(lang.getString("table.name"));
+        filterCombo.getItems().addAll(columnNames.keySet());
+        filterCombo.setConverter(new StringConverter<String>() {
+            @Override
+            public String toString(String object) {
+                return object == null ? "" : columnNames.getOrDefault(object, object);
+            }
+            @Override
+            public String fromString(String string) { return string; }
+        });
+        filterCombo.setValue("name");
 
         TextField filterField = new TextField();
         filterField.setPromptText(lang.getString("main.filter"));
@@ -192,8 +259,16 @@ public class MainController {
                 tableManager.applyFilter(filterCombo.getValue(), val));
 
         ComboBox<String> sortCombo = new ComboBox<>();
-        sortCombo.getItems().addAll("ID", lang.getString("table.name"), lang.getString("table.studentsCount"));
-        sortCombo.setValue("ID");
+        sortCombo.getItems().addAll(columnNames.keySet());
+        sortCombo.setConverter(new StringConverter<String>() {
+            @Override
+            public String toString(String object) {
+                return object == null ? "" : columnNames.getOrDefault(object, object);
+            }
+            @Override
+            public String fromString(String string) { return string; }
+        });
+        sortCombo.setValue("id");
         sortCombo.setOnAction(e -> tableManager.applySort(sortCombo.getValue()));
 
         filterBox.getChildren().addAll(
@@ -216,22 +291,18 @@ public class MainController {
 
     private void sendInfoCommand() {
         CommandResponse response = commandSender.send(CommandType.INFO);
-        dialogManager.showInfo(response.getMessage());
+        if (response.isSuccess()) {
+            int size = tableManager.getTableView().getItems().size();
+            String message = lang.getString("info.collection_type") + ": SynchronizedSet\n" +
+                    lang.getString("info.elements_count") + ": " + size;
+            dialogManager.showInfo(message);
+        } else {
+            dialogManager.showError(response.getMessage());
+        }
     }
 
     private void sendClearCommand() {
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle(lang.getString("dialog.clear.title"));
-        confirm.setHeaderText(lang.getString("dialog.clear.header"));
-        confirm.setContentText(lang.getString("dialog.clear.content"));
-        AnimationManager.pulse(confirm.getDialogPane());
-
-        confirm.showAndWait().ifPresent(r -> {
-            if (r == ButtonType.YES) {
-                commandSender.send(CommandType.CLEAR);
-                refreshTable();
-            }
-        });
+        dialogManager.showClearConfirm();
     }
 
     private void sendMinBySemesterCommand() {
@@ -289,6 +360,7 @@ public class MainController {
         if (deleteBtn != null) deleteBtn.setText(lang.getString("main.delete"));
         if (infoBtn != null) infoBtn.setText(lang.getString("cmd.info"));
         if (clearBtn != null) clearBtn.setText(lang.getString("cmd.clear"));
+        if (scriptBtn != null) scriptBtn.setText(lang.getString("cmd.execute_script"));
         if (addIfMaxBtn != null) addIfMaxBtn.setText(lang.getString("cmd.add_if_max"));
         if (removeGreaterBtn != null) removeGreaterBtn.setText(lang.getString("cmd.remove_greater"));
         if (removeByStudentsBtn != null) removeByStudentsBtn.setText(lang.getString("cmd.remove_any_by_students_count"));
@@ -298,40 +370,22 @@ public class MainController {
 
         tableManager.updateColumnTexts();
 
+        updateVisualizationTitle();
+
         updateLegendBox();
 
         updateFilterPanelTexts();
     }
 
-    private HBox createLegendBox() {
-        HBox legendBox = new HBox(20);
-        legendBox.setAlignment(javafx.geometry.Pos.CENTER);
-
-        HBox ownBox = new HBox(5);
-        javafx.scene.shape.Circle greenCircle = new javafx.scene.shape.Circle(8, javafx.scene.paint.Color.GREEN);
-        Label ownLabel = new Label(lang.getString("visualization.own"));
-        ownLabel.setStyle("-fx-text-fill: white;");
-        ownBox.getChildren().addAll(greenCircle, ownLabel);
-
-        HBox otherBox = new HBox(5);
-        javafx.scene.shape.Circle redCircle = new javafx.scene.shape.Circle(8, javafx.scene.paint.Color.RED);
-        Label otherLabel = new Label(lang.getString("visualization.other"));
-        otherLabel.setStyle("-fx-text-fill: white;");
-        otherBox.getChildren().addAll(redCircle, otherLabel);
-
-        legendBox.getChildren().addAll(ownBox, otherBox);
-        return legendBox;
-    }
-
-    private void updateLegendBox() {
+    private void updateVisualizationTitle() {
         BorderPane root = (BorderPane) stage.getScene().getRoot();
         SplitPane splitPane = (SplitPane) root.getCenter();
         VBox vizBox = (VBox) splitPane.getItems().get(1);
 
-        if (vizBox.getChildren().size() > 1) {
-            vizBox.getChildren().remove(1);
+        if (vizBox.getChildren().size() > 0 && vizBox.getChildren().get(0) instanceof Label) {
+            Label titleLabel = (Label) vizBox.getChildren().get(0);
+            titleLabel.setText(lang.getString("visualization.title"));
         }
-        vizBox.getChildren().add(1, createLegendBox());
     }
 
     private void updateFilterPanelTexts() {
