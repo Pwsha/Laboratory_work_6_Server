@@ -32,6 +32,10 @@ public class UpdateCommand implements Command {
             return CommandResponse.error("Элемент с id " + id + " не найден");
         }
 
+        if (existing.getUserId() != null && existing.getUserId() != userId) {
+            return CommandResponse.error("Вы можете редактировать только свои объекты");
+        }
+
         StudyGroup updatedGroup = new StudyGroup.Builder()
                 .id(id)
                 .name(newGroup.getName())
@@ -41,11 +45,10 @@ public class UpdateCommand implements Command {
                 .expelledStudents(newGroup.getExpelledStudents())
                 .formOfEducation(newGroup.getFormOfEducation())
                 .semesterEnum(newGroup.getSemesterEnum())
-                .groupAdmin(newGroup.getGroupAdmin())
+                .userId(userId)
                 .build();
 
         boolean success = manager.update(id, updatedGroup, userId);
-
         if (success) {
             return CommandResponse.success("Элемент с id " + id + " обновлён");
         } else {

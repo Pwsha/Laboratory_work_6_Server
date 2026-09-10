@@ -3,9 +3,7 @@ package org.example.server;
 import org.example.common.init.StudyGroup;
 import org.example.server.data.DataManager;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class CollectionManager {
     private final Set<StudyGroup> collection = Collections.synchronizedSet(new HashSet<>());
@@ -32,6 +30,7 @@ public class CollectionManager {
         Long generatedId = dbManager.addGroup(group, userId);
         if (generatedId != null) {
             group.setId(generatedId);
+            group.setUserId(userId);
             synchronized (collection) {
                 collection.add(group);
             }
@@ -41,6 +40,7 @@ public class CollectionManager {
     }
 
     public boolean update(Long id, StudyGroup newGroup, int userId) {
+        newGroup.setUserId(userId);
         if (dbManager.updateGroup(id, newGroup, userId)) {
             synchronized (collection) {
                 collection.removeIf(g -> g.getId().equals(id));
@@ -52,6 +52,22 @@ public class CollectionManager {
     }
 
     public boolean removeById(Long id, int userId) {
+        StudyGroup group = null;
+        synchronized (collection) {
+            group = collection.stream()
+                    .filter(g -> g.getId().equals(id))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        if (group == null) {
+            return false;
+        }
+
+        if (group.getUserId() != null && group.getUserId() != userId) {
+            return false;
+        }
+
         if (dbManager.deleteGroup(id, userId)) {
             synchronized (collection) {
                 collection.removeIf(g -> g.getId().equals(id));
@@ -62,13 +78,22 @@ public class CollectionManager {
     }
 
     public boolean clear(int userId) {
-        if (dbManager.clearGroups(userId)) {
-            synchronized (collection) {
-                collection.removeIf(g -> {
-                    return true;
-                });
+        List<Long> idsToRemove = new ArrayList<>();
+        synchronized (collection) {
+            for (StudyGroup g : collection) {
+                if (g.getUserId() != null && g.getUserId() == userId) {
+                    idsToRemove.add(g.getId());
+                }
             }
-            refreshFromDatabase();
+        }
+        boolean dbSuccess = dbManager.clearGroups(userId);
+
+        if (dbSuccess) {
+            synchronized (collection) {
+                int before = collection.size();
+                collection.removeIf(g -> g.getUserId() != null && g.getUserId() == userId);
+                int after = collection.size();
+            }
             return true;
         }
         return false;

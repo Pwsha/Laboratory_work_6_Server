@@ -21,7 +21,8 @@ public enum CommandType implements Serializable {
     EXECUTE_SCRIPT,
     LOGIN,
     REGISTER,
-    LOGOUT;
+    LOGOUT,
+    GET_USER_ID;
 
     public static CommandType fromString(String name) {
         try {

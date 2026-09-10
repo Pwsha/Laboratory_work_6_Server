@@ -99,7 +99,7 @@ public class DataManager {
             stmt.execute(createSequence);
             stmt.execute(createUsersTable);
             stmt.execute(createStudyGroupTable);
-            System.out.println("📋 Таблицы инициализированы");
+            System.out.println("Таблицы инициализированы");
         }
     }
 
@@ -122,11 +122,14 @@ public class DataManager {
             stmt.setString(2, hashedPassword);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                return Optional.of(rs.getInt("id"));
+                int userId = rs.getInt("id");
+                System.out.println("DEBUG: Found userId=" + userId + " for login=" + login);
+                return Optional.of(userId);
             }
+            System.out.println("DEBUG: No user found for login=" + login);
             return Optional.empty();
         } catch (SQLException e) {
-            System.err.println("Ошибка аутентификации: " + e.getMessage());
+            System.err.println("Auth error: " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -146,15 +149,9 @@ public class DataManager {
         return groups;
     }
 
+    // В DatabaseManager.java
     public Long addGroup(StudyGroup group, int userId) {
-        String sql = """
-            INSERT INTO study_group (name, coordinates_x, coordinates_y, creation_date, 
-                                     students_count, expelled_students, form_of_education, 
-                                     semester_enum, user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            RETURNING id
-        """;
-
+        String sql = "INSERT INTO study_group (name, coordinates_x, coordinates_y, creation_date, students_count, expelled_students, form_of_education, semester_enum, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, group.getName());
             stmt.setDouble(2, group.getCoordinates().getX());
@@ -164,27 +161,23 @@ public class DataManager {
             stmt.setInt(6, group.getExpelledStudents());
             stmt.setString(7, group.getFormOfEducation().name());
             stmt.setString(8, group.getSemesterEnum().name());
-            stmt.setInt(9, userId);
+            stmt.setInt(9, userId);  // ← УБЕДИТЕСЬ, ЧТО ЭТА СТРОКА ЕСТЬ!
 
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                return rs.getLong(1);
+                Long generatedId = rs.getLong(1);
+                group.setId(generatedId);
+                group.setUserId(userId);
+                return generatedId;
             }
             return null;
         } catch (SQLException e) {
-            System.err.println("Ошибка добавления группы: " + e.getMessage());
             return null;
         }
     }
 
     public boolean updateGroup(Long id, StudyGroup newGroup, int userId) {
-        String sql = """
-            UPDATE study_group 
-            SET name = ?, coordinates_x = ?, coordinates_y = ?, creation_date = ?,
-                students_count = ?, expelled_students = ?, form_of_education = ?,
-                semester_enum = ?
-            WHERE id = ? AND user_id = ?
-        """;
+        String sql = "UPDATE study_group SET name=?, coordinates_x=?, coordinates_y=?, creation_date=?, students_count=?, expelled_students=?, form_of_education=?, semester_enum=?, user_id=? WHERE id=?";
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, newGroup.getName());
@@ -195,12 +188,14 @@ public class DataManager {
             stmt.setInt(6, newGroup.getExpelledStudents());
             stmt.setString(7, newGroup.getFormOfEducation().name());
             stmt.setString(8, newGroup.getSemesterEnum().name());
-            stmt.setLong(9, id);
-            stmt.setInt(10, userId);
+            stmt.setInt(9, userId);
+            stmt.setLong(10, id);
 
-            return stmt.executeUpdate() > 0;
+            int rows = stmt.executeUpdate();
+            return rows > 0;
         } catch (SQLException e) {
-            System.err.println("Ошибка обновления группы: " + e.getMessage());
+            System.err.println("SQL Error: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -218,13 +213,27 @@ public class DataManager {
     }
 
     public boolean clearGroups(int userId) {
+        String countSql = "SELECT COUNT(*) FROM study_group WHERE user_id = ?";
+        try (PreparedStatement countStmt = connection.prepareStatement(countSql)) {
+            countStmt.setInt(1, userId);
+            ResultSet rs = countStmt.executeQuery();
+            if (rs.next()) {
+                int count = rs.getInt(1);
+                if (count == 0) {
+                    return true;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Ошибка при подсчёте: " + e.getMessage());
+        }
+
         String sql = "DELETE FROM study_group WHERE user_id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setInt(1, userId);
-            stmt.executeUpdate();
-            return true;
+            int rows = stmt.executeUpdate();
+            return rows >= 0;
         } catch (SQLException e) {
-            System.err.println("Ошибка очистки групп: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -256,6 +265,7 @@ public class DataManager {
                 .expelledStudents(rs.getInt("expelled_students"))
                 .formOfEducation(FormOfEducation.valueOf(rs.getString("form_of_education")))
                 .semesterEnum(Semester.valueOf(rs.getString("semester_enum")))
+                .userId(rs.getInt("user_id"))
                 .build();
     }
 

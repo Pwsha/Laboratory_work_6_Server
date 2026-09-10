@@ -27,9 +27,9 @@ public class CommandExecutor {
     }
 
     private void initCommands() {
+        commands.put(CommandType.HELP, new HelpCommand(commands));
         commands.put(CommandType.INFO, new InfoCommand(manager));
         commands.put(CommandType.SHOW, new ShowCommand(manager));
-        commands.put(CommandType.SHOW_ODD, new ShowOddCommand(manager));
         commands.put(CommandType.ADD, new AddCommand(manager));
         commands.put(CommandType.UPDATE, new UpdateCommand(manager));
         commands.put(CommandType.REMOVE_BY_ID, new RemoveByIdCommand(manager));
@@ -42,14 +42,10 @@ public class CommandExecutor {
         commands.put(CommandType.COUNT_GREATER_THAN_EXPELLED_STUDENTS, new CountGreaterThanExpelledStudentsCommand(manager));
         commands.put(CommandType.HISTORY, new HistoryCommand());
         commands.put(CommandType.EXECUTE_SCRIPT, new ExecuteScriptCommand());
-        commands.put(CommandType.HELP, new HelpCommand(commands));
+        commands.put(CommandType.GET_USER_ID, new GetUserIdCommand(authManager));
     }
 
     public CommandResponse execute(CommandRequest request) {
-        if (!authManager.isAuthorized(request)) {
-            return CommandResponse.error("Необходимо авторизоваться. Используйте login");
-        }
-
         CommandType type = request.getType();
 
         if (type == CommandType.LOGIN) {
@@ -60,6 +56,10 @@ public class CommandExecutor {
         }
         if (type == CommandType.LOGOUT) {
             return authManager.handleLogout(request);
+        }
+
+        if (!authManager.isAuthorized(request)) {
+            return CommandResponse.error("Необходимо авторизоваться. Используйте login");
         }
 
         java.util.Optional<Integer> userIdOpt = authManager.getUserId(request);

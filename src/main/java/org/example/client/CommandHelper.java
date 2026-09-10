@@ -10,28 +10,6 @@ import org.example.common.init.Semester;
 import java.util.*;
 
 public class CommandHelper {
-
-    public static Long generateId(HashSet<StudyGroup> collection) {
-        Set<Long> existingIds = new HashSet<>();
-        for (StudyGroup group : collection) {
-            existingIds.add(group.getId());
-        }
-
-        Random random = new Random();
-        int maxAttempts = 10000;
-        int attempts = 0;
-
-        while (attempts < maxAttempts) {
-            long id = System.currentTimeMillis() + random.nextInt(1000);
-            if (!existingIds.contains(id)) {
-                return id;
-            }
-            attempts++;
-        }
-
-        return System.nanoTime() + random.nextInt(1000000);
-    }
-
     public static StudyGroup readStudyGroup(Scanner scanner, HashSet<StudyGroup> collection) {
         System.out.println("Введите данные группы:");
 

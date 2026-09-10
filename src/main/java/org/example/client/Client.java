@@ -42,7 +42,8 @@ public class Client {
         try {
             oos.writeObject(request);
             oos.flush();
-            return (CommandResponse) ois.readObject();
+            CommandResponse response = (CommandResponse) ois.readObject();
+            return response;
         } catch (IOException | ClassNotFoundException e) {
             connected = false;
             return CommandResponse.error("Ошибка связи: " + e.getMessage());
